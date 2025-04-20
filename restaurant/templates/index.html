@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}QR Chef Navigation Bar{% endblock %}
+{% block content %}
+    <!-- Hero Section -->
+    <section id="home" class="hero-section" style="background-image: url('{% static 'images/hotel.jpg' %}');">
+        <div class="hero-content">
+            <h1>Welcome to Our Hotel</h1>
+            <p class="hero-subtitle">Luxury and comfort in the heart of the city. Book your stay with us today.</p>
+            <a href="{% url 'room' %}" class="cta-button">Explore Our Rooms</a>
+        </div>
+    </section>
+     <!-- Animated Statistics Section -->
+<section id="stats" style="background: #f9f9f9; padding: 40px 0;">
+    <div style="display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;">
+      <div style="text-align: center; min-width: 180px;">
+        <img src="{% static 'images/rooms-icon.png' %}" alt="Rooms" style="height: 48px; margin-bottom: 10px;">
+        <div id="stat-rooms" style="font-size: 2.2rem; font-weight: bold; color: #0d47a1;">0</div>
+        <div style="font-size: 1.1rem; color: #555;">Rooms</div>
+      </div>
+      <div style="text-align: center; min-width: 180px;">
+        <img src="{% static 'images/guests-icon.png' %}" alt="Happy Guests" style="height: 48px; margin-bottom: 10px;">
+        <div id="stat-guests" style="font-size: 2.2rem; font-weight: bold; color: #e91e63;">0</div>
+        <div style="font-size: 1.1rem; color: #555;">Happy Guests</div>
+      </div>
+      <div style="text-align: center; min-width: 180px;">
+        <img src="{% static 'images/dishes-icon.png' %}" alt="Dishes Served" style="height: 48px; margin-bottom: 10px;">
+        <div id="stat-dishes" style="font-size: 2.2rem; font-weight: bold; color: #43a047;">0</div>
+        <div style="font-size: 1.1rem; color: #555;">Dishes Served</div>
+      </div>
+      <div style="text-align: center; min-width: 180px;">
+        <img src="{% static 'images/staff-icon.png' %}" alt="Staff" style="height: 48px; margin-bottom: 10px;">
+        <div id="stat-staff" style="font-size: 2.2rem; font-weight: bold; color: #ff9800;">0</div>
+        <div style="font-size: 1.1rem; color: #555;">Staff Members</div>
+      </div>
+      <div style="text-align: center; min-width: 180px;">
+        <img src="{% static 'images/visits-icon.png' %}" alt="Website Visits" style="height: 48px; margin-bottom: 10px;">
+        <div id="stat-visits" style="font-size: 2.2rem; font-weight: bold; color: #009688;">0</div>
+        <div style="font-size: 1.1rem; color: #555;">Website Visits</div>
+      </div>
+    </div>
+  </section>
+
+    <!-- Rooms Section -->
+    <section id="rooms" class="rooms-section">
+        <h2 class="section-title blue-accent">Our Rooms</h2>
+        <div class="room-container">
+            <div class="room-card">
+                <img src="{% static 'images/Deluxe Room.webp' %}" alt="Deluxe Room">
+                <h3>Deluxe Room</h3>
+                <p>Spacious room with stunning city views.</p>
+            </div>
+            <div class="room-card">
+                <img src="{% static 'images/suite.jpg' %}" alt="Suite Room">
+                <h3>Suite Room</h3>
+                <p>Luxury suite with premium amenities.</p>
+            </div>
+            <div class="room-card">
+                <img src="{% static 'images/standard.jpg' %}" alt="Standard Room">
+                <h3>Standard Room</h3>
+                <p>Cozy and comfortable for budget travelers.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services-section">
+        <h2 class="section-title gold-accent">Our Services</h2>
+        <div class="services-container">
+    <div class="service-card">
+        <i class='bx bx-food-menu service-icon'></i>
+        <h3>24/7 Room Service</h3>
+        <p>Enjoy a variety of meals and snacks anytime.</p>
+    </div>
+    <div class="service-card">
+        <i class='bx bx-wifi service-icon'></i>
+        <h3>Free Wi-Fi</h3>
+        <p>Stay connected with high-speed internet.</p>
+    </div>
+    <div class="service-card">
+        <i class='bx bx-spa service-icon'></i>
+        <h3>Spa & Wellness</h3>
+        <p>Relax and rejuvenate with our spa treatments.</p>
+    </div>
+</div>
+    </section>
+   
+  
+  <script>
+    function animateValue(id, start, end, duration) {
+        let range = end - start;
+        let current = start;
+        let increment = end > start ? 1 : -1;
+        let stepTime = Math.abs(Math.floor(duration / range));
+        let obj = document.getElementById(id);
+        let timer = setInterval(function() {
+            current += increment;
+            obj.textContent = current;
+            if (current == end) {
+                clearInterval(timer);
+            }
+        }, stepTime);
+    }
+    
+    // Usage
+    animateValue("stat-rooms", 0, 50, 1500);
+    animateValue("stat-guests", 0, 2050, 1500);
+    animateValue("stat-dishes", 0, 10000, 1500);
+    animateValue("stat-staff", 0, 100, 1500);
+    </script>
+
+<script>
+    fetch('/api/website-visits/')
+    .then(response => response.json())
+    .then(data => {
+      animateValue("stat-visits", 0, data.visits, 1500);
+    });
+</script>
+{% endblock %}
