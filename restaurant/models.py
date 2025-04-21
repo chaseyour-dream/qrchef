@@ -67,3 +67,9 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.order_id} - {self.payment_status}"
+    
+class WebsiteVisit(models.Model):
+    count = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"Website Visits: {self.count}"

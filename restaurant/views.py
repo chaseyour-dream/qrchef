@@ -8,6 +8,7 @@ from restaurant.models import FoodItem, Category, CartItem, Order, OrderItem, Pa
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.decorators import login_required
+from .models import WebsiteVisit
 import json
 import decimal
 import logging
@@ -221,3 +222,9 @@ def website_visits(request):
     visits = cache.get('website_visits', 0) + 1
     cache.set('website_visits', visits, None)  # No expiry
     return JsonResponse({'visits': visits})
+
+def website_visits(request):
+    visits_obj, created = WebsiteVisit.objects.get_or_create(pk=1)
+    visits_obj.count += 1
+    visits_obj.save()
+    return JsonResponse({'visits': visits_obj.count})   
