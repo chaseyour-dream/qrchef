@@ -25,17 +25,25 @@ class Order(models.Model):
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
     ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    room_number = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-    room_number = models.CharField(max_length=255)
     quantity = models.IntegerField(default=1)
-    payment_screenshot = models.ImageField(upload_to='payment_screenshots/', null=True, blank=True)
+    PAYMENT_METHOD_CHOICES = [
+        ('Cash', 'Cash on Delivery'),
+        ('E-Payment', 'E-Payment'),
+    ]
+    PAYMENT_STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Completed', 'Completed'),
+    ]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='Cash')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='Pending')
+    payment_proof = models.ImageField(upload_to='payment_proofs/', null=True, blank=True)
 
     def __str__(self):
-        user_display = self.user.username if self.user else "Guest"
-        return f"Order {self.id} - {user_display}"
+        return f"Order {self.id} - Room {self.room_number}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
@@ -55,21 +63,7 @@ class CartItem(models.Model):
     def __str__(self):
         return f"{self.food_item.name} (x{self.quantity})"
 
-class Payment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    order_id = models.CharField(max_length=50, unique=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField(max_length=20, default="Cash")
-    payment_status = models.CharField(max_length=20, default="Pending")
-    transaction_id = models.CharField(max_length=100, blank=True, null=True)
-    payment_proof = models.ImageField(upload_to='payment_proofs/', blank=True, null=True)  # For e-payment screenshot
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Payment {self.order_id} - {self.payment_status}"
-    
 class WebsiteVisit(models.Model):
     count = models.PositiveIntegerField(default=0)
-
     def __str__(self):
         return f"Website Visits: {self.count}"

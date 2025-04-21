@@ -4,7 +4,7 @@ from django.shortcuts import render,redirect
 from django.http import JsonResponse
 from django.db import models
 from django.contrib.auth.models import User
-from restaurant.models import FoodItem, Category, CartItem, Order, OrderItem, Payment
+from restaurant.models import FoodItem, Category, CartItem, Order, OrderItem
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.decorators import login_required
@@ -43,13 +43,19 @@ def menu_view(request):
     if room_no:
         request.session['room_no'] = room_no
 
-    # 2. Usual menu logic
+    # 2. Build categories list for template
     food_items = FoodItem.objects.select_related('category').all()
-    category_food_items = {}
+    categories_dict = {}
     for item in food_items:
-        category_food_items.setdefault(item.category, []).append(item)
-
-    return render(request, 'menu.html', {'category_food_items': category_food_items})
+        cat_id = item.category.id
+        if cat_id not in categories_dict:
+            categories_dict[cat_id] = {
+                'name': item.category.name,
+                'items': []
+            }
+        categories_dict[cat_id]['items'].append(item)
+    categories = list(categories_dict.values())
+    return render(request, 'menu.html', {'categories': categories})
 
 # API to fetch cart data
 def get_cart(request):
@@ -125,41 +131,8 @@ def remove_from_cart(request):
         # If the item is not in the cart, return a bad request response
         return JsonResponse({'error': 'Item not found in cart'}, status=400)
 
-# Place Order (Create order and clear cart)
-@login_required
-def place_order(request):
-    user = request.user
-    cart = request.session.get('cart', {})
-
-    if not cart:
-        return JsonResponse({'message': 'Your cart is empty, add items before placing an order'}, status=400)
-
-    order = Order.objects.create(user=user, total_price=0)
-    total_price = decimal.Decimal(0.00)
-
-    for food_id, food_data in cart.items():
-        try:
-            food_item = FoodItem.objects.get(id=food_id)
-            quantity = food_data['quantity']
-            price = decimal.Decimal(food_item.price) * decimal.Decimal(quantity)
-            total_price += price
-
-            OrderItem.objects.create(
-                order=order,
-                food_name=food_item.name,
-                price=price,
-                quantity=quantity  # Added quantity tracking
-            )
-        except FoodItem.DoesNotExist:
-            return JsonResponse({'message': f'Food item with ID {food_id} not found'}, status=404)
-
-    order.total_price = total_price
-    order.save()
-
-    request.session['cart'] = {}
-    request.session.modified = True
-
-    return JsonResponse({'message': 'Order placed successfully', 'order_id': order.id, 'total_price': float(total_price)})
+# Order placement is now handled by confirm_order, which supports AJAX, room number, payment method, and both authenticated/anonymous users.
+# The old place_order view has been removed for clarity and to prevent duplicates.
 
 logger = logging.getLogger(__name__)
 
@@ -167,61 +140,67 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def confirm_order(request):
+    import logging
+    logger = logging.getLogger('django')
     if request.method == 'POST':
         try:
+            logger.info('Incoming confirm_order request: content_type=%s', request.content_type)
             if request.content_type.startswith('multipart/form-data'):
                 user = request.user if request.user.is_authenticated else None
                 items = json.loads(request.POST.get('items', '[]'))
                 payment_method = request.POST.get('payment_method', 'Cash')
                 payment_proof = request.FILES.get('payment_proof')
+                logger.info('Parsed multipart: user=%s, items=%s, payment_method=%s, payment_proof=%s', user, items, payment_method, payment_proof)
             else:
                 data = json.loads(request.body)
                 user = request.user if request.user.is_authenticated else None
                 items = data.get('items', [])
                 payment_method = data.get('payment_method', 'Cash')
                 payment_proof = None
+                logger.info('Parsed JSON: user=%s, items=%s, payment_method=%s', user, items, payment_method)
 
             # Always get room number from session (set by menu_view)
             room_number = request.session.get('room_no', '')
+            logger.info('Room number from session: %s', room_number)
 
             if not items:
+                logger.warning('No items in order')
                 return JsonResponse({'success': False, 'message': 'No items in order'}, status=400)
 
             total_price = sum(float(item['price']) * int(item['quantity']) for item in items)
+            logger.info('Calculated total_price: %s', total_price)
             order = Order.objects.create(
-                user=user,
                 total_price=total_price,
                 status='Pending',
                 room_number=room_number,
                 quantity=sum(int(item['quantity']) for item in items)
             )
+            logger.info('Order created: %s', order)
 
             for item in items:
+                food_item = FoodItem.objects.get(id=item['id'])
                 OrderItem.objects.create(
                     order=order,
-                    food_item=FoodItem.objects.get(id=item['id']),
+                    food_item=food_item,
                     price=float(item['price']),
                     quantity=int(item['quantity'])
                 )
+                logger.info('OrderItem created for food_item=%s, quantity=%s', food_item, item['quantity'])
 
-            Payment.objects.create(
-                user=user,
-                order_id=order.id,
-                amount=total_price,
-                payment_method=payment_method,
-                payment_status='Completed' if payment_method == 'Cash' else 'Pending',
-                payment_proof=payment_proof
-            )
+            # Set payment fields directly on the order
+            order.payment_method = payment_method
+            order.payment_status = 'Pending' if payment_method == 'Cash' else 'Completed'
+            order.payment_proof = payment_proof if payment_method == 'E-Payment' else None
+            order.save()
+            logger.info('Order updated with payment_method=%s, payment_status=%s', payment_method, order.payment_status)
 
             return JsonResponse({'success': True})
         except Exception as e:
+            logger.error('Order creation failed: %s', e, exc_info=True)
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    logger.warning('Invalid request method')
     return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
 
-def website_visits(request):
-    visits = cache.get('website_visits', 0) + 1
-    cache.set('website_visits', visits, None)  # No expiry
-    return JsonResponse({'visits': visits})
 
 def website_visits(request):
     visits_obj, created = WebsiteVisit.objects.get_or_create(pk=1)

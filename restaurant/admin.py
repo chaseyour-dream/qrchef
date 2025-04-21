@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, FoodItem, Order, CartItem, OrderItem, Payment
+from .models import Category, FoodItem, Order, CartItem, OrderItem
 
 # Customizing FoodItem admin view
 class FoodItemAdmin(admin.ModelAdmin):
@@ -15,12 +15,12 @@ class FoodItemAdmin(admin.ModelAdmin):
 
 # Customizing CartItem admin view
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ('food_item', 'quantity', 'order_user')
-    list_filter = ('order__user',)
+    list_display = ('food_item', 'quantity', 'order_room_number')
+    list_filter = ('order__room_number',)
 
-    def order_user(self, obj):
-        return obj.order.user.username
-    order_user.short_description = 'User'
+    def order_room_number(self, obj):
+        return obj.order.room_number
+    order_room_number.short_description = 'Room Number'
 
 # Customizing Order admin view
 class OrderItemInline(admin.TabularInline):
@@ -30,15 +30,8 @@ class OrderItemInline(admin.TabularInline):
 
 # Customizing Order admin view
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('user', 'created_at','room_number', 'total_price', 'status', 'payment_method_display', 'order_details', 'show_payment_proof')
+    list_display = ('room_number', 'created_at', 'total_price', 'status', 'payment_method', 'payment_status', 'order_details', 'show_payment_proof')
     inlines = [OrderItemInline]
-
-    def payment_method_display(self, obj):
-        payment = Payment.objects.filter(order_id=obj.id).first()
-        if payment:
-            return payment.payment_method
-        return '-'
-    payment_method_display.short_description = 'Payment Method'
 
     def order_details(self, obj):
         details = [f"{item.food_item.name} (x{item.quantity})" for item in obj.orderitem_set.all()]
@@ -46,9 +39,8 @@ class OrderAdmin(admin.ModelAdmin):
     order_details.short_description = 'Order Details'
 
     def show_payment_proof(self, obj):
-        payment = Payment.objects.filter(order_id=obj.id).first()
-        if payment and payment.payment_proof:
-            return format_html('<img src="{}" width="80" />', payment.payment_proof.url)
+        if obj.payment_proof:
+            return format_html('<img src="{}" width="80" />', obj.payment_proof.url)
         return "-"
     show_payment_proof.short_description = 'Payment Proof'
 
@@ -56,20 +48,9 @@ class OrderAdmin(admin.ModelAdmin):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'description')
 
-# Payment admin with payment proof image
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'order_id', 'amount', 'payment_method', 'payment_status', 'show_payment_proof')
-    readonly_fields = ('show_payment_proof',)
-
-    def show_payment_proof(self, obj):
-        if obj.payment_proof:
-            return format_html('<img src="{}" width="80" />', obj.payment_proof.url)
-        return "-"
-    show_payment_proof.short_description = 'Payment Proof'
 
 # Register models with admin site
 admin.site.register(FoodItem, FoodItemAdmin)
 admin.site.register(CartItem, CartItemAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Category, CategoryAdmin)
-admin.site.register(Payment, PaymentAdmin)
