@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="profile-container">
+    <h2>Welcome, {{ user.username }}!</h2>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <div class="profile-photo-block">
+        <img src="{% if user.profile.photo %}{{ user.profile.photo.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="Profile Photo" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
+    </div>
+    <p>Email: {{ user.email }}</p>
+    <form method="post" enctype="multipart/form-data" style="margin-top:1.5em;">
+        {% csrf_token %}
+        <label for="id_photo"><b>Change Profile Photo:</b></label><br>
+        {{ form.photo }}
+        <button type="submit" class="btn btn-primary" style="margin-top:0.5em;">Upload</button>
+    </form>
+</div>
+{% endblock %}

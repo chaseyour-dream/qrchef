@@ -1,9 +1,11 @@
 from django.views.decorators.csrf import csrf_protect 
 from django.views.decorators.csrf import csrf_exempt 
 from django.shortcuts import render,redirect
+from .forms import ProfileImageForm
 from django.http import JsonResponse
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
 from restaurant.models import FoodItem, Category, CartItem, Order, OrderItem
 from django.conf import settings
 from django.core.cache import cache
@@ -17,14 +19,81 @@ import logging
 
 # Home Page
 def index(request):
+    if request.user.is_authenticated:
+        from .models import Profile
+        Profile.objects.get_or_create(user=request.user)
     return render(request, 'index.html')
 
 # Signup Page
+import random
+from django.core.mail import send_mail
+from django.contrib import messages
+from django.conf import settings
+
 def signup_page(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        password2 = request.POST.get('password2')
+        email = request.POST.get('email')
+        if not username or not password or not password2:
+            messages.error(request, 'All fields are required.')
+        elif password != password2:
+            messages.error(request, 'Passwords do not match.')
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, 'Username already exists.')
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, 'Email already exists.')
+        else:
+            user = User.objects.create_user(username=username, password=password, email=email)
+            user.save()
+            messages.success(request, 'Account created successfully! Please log in.')
+            return redirect('login')
     return render(request, 'signup.html')
 
+# (verify_otp view removed)
+
+# Logout Page
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+# Profile Page
+
+
+from django.contrib import messages
+
+def profile_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    from .models import Profile
+    profile, created = Profile.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        form = ProfileImageForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile photo updated successfully!')
+    # Always redirect to home after POST or GET; modal handles display
+    return redirect('index')
+
 # Login Page
+from django.middleware.csrf import get_token
+
 def login_page(request):
+    if request.method == 'POST':
+        print("CSRF cookie:", request.COOKIES.get('csrftoken'))
+        print("CSRF POST:", request.POST.get('csrfmiddlewaretoken'))
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            # Robust: always ensure profile exists
+            from .models import Profile
+            Profile.objects.get_or_create(user=user)
+            return redirect('index')
+        else:
+            messages.error(request, 'Invalid username or password.')
     return render(request, 'login.html')
 
 # Room Page

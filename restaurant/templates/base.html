@@ -495,8 +495,42 @@
       <li><a href="{% url 'aboutus' %}">About Us</a></li>
       <li><a href="{% url 'menu' %}">Menu</a></li>
       <li><a href="{% url 'room' %}">Room</a></li>
-      <li><a href="{% url 'login' %}" class="login">Login</a></li>
-      <li><a href="{% url 'signup' %}" class="signup">Signup</a></li>
+      {% if user.is_authenticated %}
+        <li>
+          <a href="{% url 'logout' %}" class="logout styled-btn">Logout</a>
+<style>
+  .styled-btn.logout {
+    background: #ef4444;
+    color: #fff !important;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5em 1.5em;
+    font-size: 1.07em;
+    box-shadow: 0 2px 8px rgba(239,68,68,0.07);
+    transition: background 0.18s, box-shadow 0.18s;
+    display: inline-block;
+    margin-left: 0.6em;
+    text-align: center;
+    cursor: pointer;
+  }
+  .styled-btn.logout:hover {
+    background: #dc2626;
+    box-shadow: 0 4px 16px rgba(239,68,68,0.14);
+    color: #fff;
+    text-decoration: none;
+  }
+</style>
+        </li>
+        <li>
+          <a href="#" class="profile-photo-link" id="openProfileModal">
+            <img src="{% if user.profile.photo %}{{ user.profile.photo.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="Profile" class="profile-photo" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;">
+          </a>
+        </li>
+      {% else %}
+        <li><a href="{% url 'login' %}" class="login">Login</a></li>
+        <li><a href="{% url 'signup' %}" class="signup">Signup</a></li>
+      {% endif %}
     </ul>
   </div>
 </nav>
@@ -505,6 +539,150 @@
     <div class="main-content">
       {% block content %}{% endblock %}
     </div>
+
+    <!-- Profile Modal -->
+    <style>
+  #profileModal.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(30, 41, 59, 0.35);
+    backdrop-filter: blur(2px);
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s;
+  }
+  #profileModal .modal-content {
+    background: #fff;
+    padding: 2.5rem 2.5rem 2rem 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(80,80,80,0.06);
+    min-width: 320px;
+    max-width: 90vw;
+    width: 360px;
+    position: relative;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+  }
+  #closeProfileModal {
+    position: absolute;
+    top: 10px; right: 18px;
+    font-size: 2rem;
+    color: #888;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  #closeProfileModal:hover {
+    color: #e74c3c;
+  }
+  #profileModal .modal-content img {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #f1f5f9;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  #profileModal .modal-content h2 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem 0;
+    font-weight: 700;
+    color: #334155;
+  }
+  #profileModal .modal-content p {
+    margin: 0;
+    color: #64748b;
+    font-size: 1rem;
+  }
+  #profileModal .modal-content form {
+    margin-top: 1.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+  }
+  #profileModal .modal-content label {
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 0.2em;
+    font-size: 1rem;
+  }
+  #profileModal .modal-content input[type="file"] {
+    border: none;
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 0.5em;
+    width: 100%;
+    margin-bottom: 0.5em;
+    font-size: 0.97rem;
+  }
+  #profileModal .modal-content button[type="submit"] {
+    background: linear-gradient(90deg, #22c55e 0%, #06b6d4 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.55em 1.5em;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.2em;
+    box-shadow: 0 2px 8px rgba(34,197,94,0.08);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  #profileModal .modal-content button[type="submit"]:hover {
+    background: linear-gradient(90deg, #06b6d4 0%, #22c55e 100%);
+    box-shadow: 0 4px 16px rgba(6,182,212,0.15);
+  }
+  @media (max-width: 500px) {
+    #profileModal .modal-content {
+      min-width: 90vw;
+      padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    }
+  }
+</style>
+<div id="profileModal" class="modal">
+  <div class="modal-content">
+    <span id="closeProfileModal">&times;</span>
+    <img src="{% if user.profile.photo %}{{ user.profile.photo.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="Profile Photo">
+    <h2>{{ user.username }}</h2>
+    <p>Email: <b>{{ user.email }}</b></p>
+    <p>Member since: <b>{{ user.date_joined|date:'F d, Y' }}</b></p>
+    <form method="post" enctype="multipart/form-data" action="{% url 'profile' %}">
+      {% csrf_token %}
+      <label for="id_photo_modal"><b>Change Profile Photo:</b></label>
+      <input type="file" name="photo" id="id_photo_modal" accept="image/*" required>
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </div>
+</div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var modal = document.getElementById('profileModal');
+        var openBtn = document.getElementById('openProfileModal');
+        var closeBtn = document.getElementById('closeProfileModal');
+        if (openBtn && modal && closeBtn) {
+          openBtn.onclick = function(e) {
+            e.preventDefault();
+            modal.style.display = 'flex';
+          };
+          closeBtn.onclick = function() {
+            modal.style.display = 'none';
+          };
+          window.onclick = function(event) {
+            if (event.target == modal) {
+              modal.style.display = 'none';
+            }
+          };
+        }
+      });
+    </script>
     <footer class="footer-creative">
         <div class="footer-main-row">
           <div class="footer-logo">
