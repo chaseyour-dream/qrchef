@@ -1,10 +1,11 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats
+from django.contrib import messages
 
 # Customizing FoodItem admin view
 class FoodItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'description', 'image_url')
+    list_display = ('name', 'price', 'image_url')
     search_fields = ('name',)
 
     def image_url(self, obj):
@@ -56,10 +57,21 @@ class OrderDateRangeFilter(admin.SimpleListFilter):
             return queryset.filter(created_at__gte=since)
         return queryset
 
+
+
 class OrderAdmin(admin.ModelAdmin):
     list_display = ('room_number', 'created_at', 'total_price', 'status', 'payment_method', 'payment_status', 'order_details')
     inlines = [OrderItemInline]
+    list_per_page = 20  # Show 20 orders per page
     list_filter = (OrderDateRangeFilter, 'room_number', 'status')
+    actions = ['delete_all_orders']
+
+    def delete_all_orders(self, request, queryset):
+        from .models import Order
+        count = Order.objects.count()
+        Order.objects.all().delete()
+        self.message_user(request, f"Deleted all {count} orders.", messages.SUCCESS)
+    delete_all_orders.short_description = "Delete ALL orders (careful!)"
 
     def order_details(self, obj):
         details = [f"{item.food_item.name} (x{item.quantity})" for item in obj.orderitem_set.all()]
@@ -68,7 +80,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 # Customizing Category admin view
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description')
+    list_display = ('name',)
 
 
 # Register models with admin site
