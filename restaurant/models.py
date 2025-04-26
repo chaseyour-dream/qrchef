@@ -79,6 +79,9 @@ class DashboardStats(models.Model):
     staff_members = models.PositiveIntegerField(default=0)
     dishes_limit = models.PositiveIntegerField(default=10000, help_text="Limit for Dishes Served animation")
     guests_limit = models.PositiveIntegerField(default=2000, help_text="Limit for Happy Guests animation")
+    
+    class Meta:
+        verbose_name_plural = 'Dashboard Stats'
 
     def __str__(self):
         return "Dashboard Stats"
