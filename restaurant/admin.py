@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats
 from django.contrib import messages
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 # Customizing FoodItem admin view
 class FoodItemAdmin(admin.ModelAdmin):
@@ -30,8 +32,7 @@ class OrderItemInline(admin.TabularInline):
     fields = ('food_item', 'price', 'quantity')
 
 # Customizing Order admin view
-from datetime import datetime, timedelta
-from django.utils import timezone
+
 
 class OrderDateRangeFilter(admin.SimpleListFilter):
     title = 'Order Date Range'

@@ -129,13 +129,35 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Add your static directory here if needed
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'restaurant', 'static'),
 ]
 
-# Add your settings here.
+JAZZMIN_SETTINGS = {
+    "site_title": "QR Chef Admin",
+    "site_header": "QR Chef Admin",
+    "site_brand": "QR Chef",
+    "welcome_sign": "Welcome to QR Chef Admin",
+    "login_logo": "images/QR.png",  # Uses your existing image for now
+    "site_logo": "images/QC.jpg",
+    "copyright": "QR Chef 2025",
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "user_avatar": "images/profile_default.png",
+    "icons": {
+        "restaurant": "fas fa-utensils",  # App icon
+        "restaurant.category": "fas fa-list",
+        "restaurant.dashboardstats": "fas fa-chart-bar",
+        "restaurant.fooditem": "fas fa-hamburger",
+        "restaurant.order": "fas fa-receipt",
+        "restaurant.websitevisit": "fas fa-globe",
+        "auth.user": "fas fa-user",
+    "auth.group": "fas fa-users",
+    },
+}
 
 # Use console backend for email (for development/testing)
 # Use Gmail SMTP for sending real emails
