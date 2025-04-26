@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, FoodItem, Order, CartItem, OrderItem
+from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats
 
 # Customizing FoodItem admin view
 class FoodItemAdmin(admin.ModelAdmin):
@@ -29,20 +29,42 @@ class OrderItemInline(admin.TabularInline):
     fields = ('food_item', 'price', 'quantity')
 
 # Customizing Order admin view
+from datetime import datetime, timedelta
+from django.utils import timezone
+
+class OrderDateRangeFilter(admin.SimpleListFilter):
+    title = 'Order Date Range'
+    parameter_name = 'order_date_range'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('today', 'Today (24 hrs)'),
+            ('week', 'Last 7 Days'),
+            ('month', 'Last 30 Days'),
+        )
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        if self.value() == 'today':
+            since = now - timedelta(days=1)
+            return queryset.filter(created_at__gte=since)
+        elif self.value() == 'week':
+            since = now - timedelta(days=7)
+            return queryset.filter(created_at__gte=since)
+        elif self.value() == 'month':
+            since = now - timedelta(days=30)
+            return queryset.filter(created_at__gte=since)
+        return queryset
+
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('room_number', 'created_at', 'total_price', 'status', 'payment_method', 'payment_status', 'order_details', 'show_payment_proof')
+    list_display = ('room_number', 'created_at', 'total_price', 'status', 'payment_method', 'payment_status', 'order_details')
     inlines = [OrderItemInline]
+    list_filter = (OrderDateRangeFilter, 'room_number', 'status')
 
     def order_details(self, obj):
         details = [f"{item.food_item.name} (x{item.quantity})" for item in obj.orderitem_set.all()]
         return ", ".join(details)
     order_details.short_description = 'Order Details'
-
-    def show_payment_proof(self, obj):
-        if obj.payment_proof:
-            return format_html('<img src="{}" width="80" />', obj.payment_proof.url)
-        return "-"
-    show_payment_proof.short_description = 'Payment Proof'
 
 # Customizing Category admin view
 class CategoryAdmin(admin.ModelAdmin):
@@ -50,7 +72,21 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 # Register models with admin site
+class WebsiteVisitAdmin(admin.ModelAdmin):
+    readonly_fields = ('count',)
+
+admin.site.register(WebsiteVisit, WebsiteVisitAdmin)
+class DashboardStatsAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        # Allow add only if no instance exists
+        count = DashboardStats.objects.count()
+        return count == 0
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion
+        return False
+
+admin.site.register(DashboardStats, DashboardStatsAdmin)
 admin.site.register(FoodItem, FoodItemAdmin)
-admin.site.register(CartItem, CartItemAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Category, CategoryAdmin)

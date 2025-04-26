@@ -6,13 +6,12 @@ from django.http import JsonResponse
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from restaurant.models import FoodItem, Category, CartItem, Order, OrderItem
+from restaurant.models import FoodItem, Category, Order, OrderItem
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.decorators import login_required
 from .models import WebsiteVisit
 import json
-import decimal
 import logging
 
 
@@ -22,7 +21,9 @@ def index(request):
     if request.user.is_authenticated:
         from .models import Profile
         Profile.objects.get_or_create(user=request.user)
-    return render(request, 'index.html')
+    from .models import DashboardStats
+    stats = DashboardStats.objects.first()
+    return render(request, 'index.html', {'stats': stats})
 
 # Signup Page
 import random
@@ -112,19 +113,31 @@ def menu_view(request):
     if room_no:
         request.session['room_no'] = room_no
 
-    # 2. Build categories list for template
-    food_items = FoodItem.objects.select_related('category').all()
-    categories_dict = {}
-    for item in food_items:
-        cat_id = item.category.id
-        if cat_id not in categories_dict:
-            categories_dict[cat_id] = {
-                'name': item.category.name,
-                'items': []
-            }
-        categories_dict[cat_id]['items'].append(item)
-    categories = list(categories_dict.values())
-    return render(request, 'menu.html', {'categories': categories})
+    categories = Category.objects.all()
+    category_id = request.GET.get('category')
+    if category_id:
+        food_items = FoodItem.objects.filter(category_id=category_id)
+        categories = categories.filter(id=category_id)
+    else:
+        food_items = FoodItem.objects.all()
+
+    # Attach items to each category
+    for category in categories:
+        category.items = food_items.filter(category=category)
+    cart_items = []
+    cart = request.session.get('cart', {})
+    for item_id, quantity in cart.items():
+        try:
+            food_item = FoodItem.objects.get(id=item_id)
+            cart_items.append({'food_item': food_item, 'quantity': quantity})
+        except FoodItem.DoesNotExist:
+            pass
+    context = {
+        'categories': categories,
+        'food_items': food_items,
+        'cart_items': cart_items,
+    }
+    return render(request, 'menu.html', context)
 
 # API to fetch cart data
 def get_cart(request):
@@ -219,18 +232,20 @@ def confirm_order(request):
                 items = json.loads(request.POST.get('items', '[]'))
                 payment_method = request.POST.get('payment_method', 'Cash')
                 payment_proof = request.FILES.get('payment_proof')
-                logger.info('Parsed multipart: user=%s, items=%s, payment_method=%s, payment_proof=%s', user, items, payment_method, payment_proof)
+                room_number = request.POST.get('room_no', '')
+                logger.info('Parsed multipart: user=%s, items=%s, payment_method=%s, payment_proof=%s, room_no=%s', user, items, payment_method, payment_proof, room_number)
             else:
                 data = json.loads(request.body)
                 user = request.user if request.user.is_authenticated else None
                 items = data.get('items', [])
                 payment_method = data.get('payment_method', 'Cash')
                 payment_proof = None
-                logger.info('Parsed JSON: user=%s, items=%s, payment_method=%s', user, items, payment_method)
+                room_number = data.get('room_no', '')
+                logger.info('Parsed JSON: user=%s, items=%s, payment_method=%s, room_no=%s', user, items, payment_method, room_number)
 
-            # Always get room number from session (set by menu_view)
-            room_number = request.session.get('room_no', '')
-            logger.info('Room number from session: %s', room_number)
+            if not room_number:
+                logger.warning('No room number provided')
+                return JsonResponse({'success': False, 'message': 'Room number is required. Please scan the QR code.'}, status=400)
 
             if not items:
                 logger.warning('No items in order')

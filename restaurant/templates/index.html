@@ -87,7 +87,7 @@
    
   
   <script>
-    function animateValue(id, start, end, duration) {
+    function animateValue(id, start, end, duration, showPlus=false) {
         let range = end - start;
         let current = start;
         let increment = end > start ? 1 : -1;
@@ -95,18 +95,30 @@
         let obj = document.getElementById(id);
         let timer = setInterval(function() {
             current += increment;
-            obj.textContent = current;
+            obj.textContent = current + (showPlus ? '+' : '');
             if (current == end) {
                 clearInterval(timer);
+                if (showPlus) obj.textContent = end + '+';
             }
         }, stepTime);
     }
     
     // Usage
-    animateValue("stat-rooms", 0, 50, 1500);
-    animateValue("stat-guests", 0, 2050, 1500);
-    animateValue("stat-dishes", 0, 10000, 1500);
-    animateValue("stat-staff", 0, 100, 1500);
+    // Dishes Served
+    {% if stats.dishes_served|default:0 >= stats.dishes_limit|default:10000 %}
+        animateValue("stat-dishes", 0, {{ stats.dishes_limit|default:10000 }}, 1500, true);
+    {% else %}
+        animateValue("stat-dishes", 0, {{ stats.dishes_served|default:0 }}, 1500);
+    {% endif %}
+    // Happy Guests
+    {% if stats.happy_guests|default:0 >= stats.guests_limit|default:2000 %}
+        animateValue("stat-guests", 0, {{ stats.guests_limit|default:2000 }}, 1500, true);
+    {% else %}
+        animateValue("stat-guests", 0, {{ stats.happy_guests|default:0 }}, 1500);
+    {% endif %}
+    // Rooms and Staff
+    animateValue("stat-rooms", 0, {{ stats.rooms|default:0 }}, 1500);
+    animateValue("stat-staff", 0, {{ stats.staff_members|default:0 }}, 1500);
     </script>
 
 <script>

@@ -4,7 +4,9 @@
 {% block content %}
 <!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<h1 class="menu-heading">Food Made with Love</h1>
+<div class="menu-heading-wrapper" style="display: flex; align-items: center; justify-content: center; min-height: 10vh; margin-top: 1.2rem;">
+  <h1 class="menu-heading" style="margin-bottom: 1.2rem;">Food Made with Love</h1>
+</div>
 <style>
 /* Cart increment/decrement button styles */
 .cart-item-col {
@@ -82,38 +84,6 @@
     height: 30px;
     font-size: 1rem;
   }
-
-
-/* Payment method button styles */
-#btn-cash, #btn-epay {
-  border-radius: 999px;
-  font-size: 1.1rem;
-  padding: 10px 28px;
-  font-weight: 600;
-  border: none;
-  margin: 0 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  transition: background 0.2s, color 0.2s;
-  display: inline-block;
-}
-#btn-cash {
-  background: #dc3545;
-  color: #fff;
-}
-#btn-cash:hover, #btn-cash.active {
-  background: #b52a37;
-  color: #fff;
-}
-#btn-epay {
-  background: #1976d2;
-  color: #fff;
-}
-#btn-epay:hover, #btn-epay.active {
-  background: #1257a8;
-  color: #fff;
-}
-
-
 
 .menu-heading {
   text-align: center;
@@ -249,7 +219,7 @@
         margin-top: 1.5em;
     }
 
-    .cart-total-section, .payment-section {
+    .cart-total-section{
         flex-shrink: 0;
     }
     .cart-header {
@@ -770,16 +740,8 @@
         line-height: 1.15;
     }
 
-    #btn-cash {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        height: 100%;
-        width: 100%;
-        line-height: 1.2;
-        word-break: break-word;
-    }
+    
+   
 
     #btn-epay.active {
         background: #0a7c1c;
@@ -1344,63 +1306,6 @@
             font-size: 1.3rem;
         }
     }
-      /* --- Mobile Payment/Confirm Buttons Shrink --- */
-  @media (max-width: 600px) {
-    .payment-buttons {
-      flex-direction: row !important;
-      gap: 0.18rem !important;
-      margin-bottom: 0.4rem !important;
-      padding: 0 !important;
-    }
-    .payment-buttons button,
-    #payment-section .segment-btn {
-      font-size: 1.1rem !important;
-      font-weight: bold !important;
-      padding:0 0.4em !important; /* Add vertical padding */
-      min-width: 0 !important;
-      max-width: none !important;
-      min-height: 0 !important;
-      height: 64px !important;
-      border-radius: 0 !important;
-      flex: 1 1 0 !important;
-      margin: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      text-align: center !important;
-      white-space: nowrap !important;
-      line-height: 1 !important; /* Increase line height for better vertical centering */
-      box-shadow: none !important;
-      width: 100% !important;
-      
-    }
-    .payment-buttons button:first-child {
-      border-radius: 999px 0 0 999px !important;
-    }
-    .payment-buttons button:last-child {
-      border-radius: 0 999px 999px 0 !important;
-    }
-    .confirm-button {
-      font-size: 0.91rem !important;
-      padding: 0.7em 1.2em !important;
-      border-radius: 0.7em !important;
-      margin-bottom: 1.2em !important;
-      min-width: 110px !important;
-      max-width: 180px !important;
-      min-height: 38px !important;
-      height: 56px !important;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-  }
-  .cart-modern {
-    z-index: 900 !important;
-    display: none;
-  }
-  .cart-modern.active {
-    display: flex;
-  }
   
 </style>
 
@@ -1479,43 +1384,9 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Payment Method Logic
-  let selectedPayment = 'Cash'; // default
-  const btnCash = document.getElementById('btn-cash');
-  const btnEpay = document.getElementById('btn-epay');
-  const ePaymentSection = document.getElementById('e-payment-section');
-  const paymentProofInput = document.getElementById('payment-proof');
+// Confirm Order Logic (No payment method selection)
   const confirmOrderBtn = document.getElementById('confirm-order-btn');
-
-  function updatePaymentUI() {
-    if (selectedPayment === 'Cash') {
-      btnCash.classList.add('active');
-      btnEpay.classList.remove('active');
-      ePaymentSection.style.display = 'none';
-      confirmOrderBtn.disabled = false;
-    } else {
-      btnCash.classList.remove('active');
-      btnEpay.classList.add('active');
-      ePaymentSection.style.display = 'block';
-      // Disable confirm until file selected
-      confirmOrderBtn.disabled = !paymentProofInput.files.length;
-    }
-  }
-  if (btnCash && btnEpay && ePaymentSection && confirmOrderBtn) {
-    btnCash.addEventListener('click', function() {
-      selectedPayment = 'Cash';
-      updatePaymentUI();
-    });
-    btnEpay.addEventListener('click', function() {
-      selectedPayment = 'E-Payment';
-      updatePaymentUI();
-    });
-    paymentProofInput.addEventListener('change', function() {
-      if (selectedPayment === 'E-Payment') {
-        confirmOrderBtn.disabled = !paymentProofInput.files.length;
-      }
-    });
-    updatePaymentUI();
+  if (confirmOrderBtn) {
     confirmOrderBtn.addEventListener('click', function() {
       if (Object.keys(window.cart).length === 0) {
         alert('Your cart is empty!');
@@ -1527,69 +1398,31 @@ function getCookie(name) {
         price: item.price,
         quantity: item.quantity
       }));
-      const paymentMethod = selectedPayment;
-      console.log('Sending order to backend...');
-      if (paymentMethod === 'Cash') {
-        fetch('/confirm-order/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-          },
-          body: JSON.stringify({
-            items: cartItems,
-            payment_method: 'Cash'
-          })
+      fetch('/confirm-order/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          items: cartItems
         })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            alert('Order Confirmed!');
-            window.cart = {};
-            sessionStorage.removeItem('cart');
-            window.saveCart();
-            updateCartDisplay();
-            // renderPaymentSection(); // Removed to prevent ReferenceError
-          } else {
-            alert('Order failed: ' + data.message);
-          }
-        })
-        .catch(error => { alert('Fetch error (Cash): ' + error); console.error('Error:', error); });
-      } else if (paymentMethod === 'E-Payment') {
-        if (!paymentProofInput.files.length) {
-          alert('Please upload your payment screenshot.');
-          return;
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Order Confirmed!');
+          window.cart = {};
+          sessionStorage.removeItem('cart');
+          window.saveCart();
+          updateCartDisplay();
+        } else {
+          alert('Order failed: ' + data.message);
         }
-        const paymentProof = paymentProofInput.files[0];
-        const formData = new FormData();
-        formData.append('items', JSON.stringify(cartItems));
-        formData.append('payment_method', 'E-Payment');
-        formData.append('payment_proof', paymentProof);
-        fetch('/confirm-order/', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            alert('Order placed! Your payment will be verified.');
-            window.cart = {};
-            sessionStorage.removeItem('cart');
-            window.saveCart();
-            updateCartDisplay();
-            // renderPaymentSection(); // Removed to prevent ReferenceError
-          } else {
-            alert('Order failed: ' + data.message);
-          }
-        })
-        .catch(error => { alert('Fetch error (E-Payment): ' + error); console.error('Error:', error); });
-      }
+      })
+      .catch(error => { alert('Fetch error: ' + error); console.error('Error:', error); });
     });
   }
-
 
   function addToCart(item) {
     console.log('addToCart called with:', item);
@@ -1689,6 +1522,7 @@ function getCookie(name) {
       transition: transform 0.25s cubic-bezier(.4,2.2,.3,1), opacity 0.18s;
       transform: translateX(100%);
       opacity: 0;
+      padding-bottom: 100px;
     }
     #cart.cart-modern.active {
       display: flex;
@@ -1703,21 +1537,21 @@ function getCookie(name) {
       }
     }
   .cart-modern {
-  z-index: 900 !important;
+  z-index: 3002 !important;
 }
 .footer-creative, footer {
   z-index: 2000 !important;
   position: relative;
 }
 .cart-modern {
-  z-index: 900 !important;
+  z-index: 3002 !important;
 }
 .footer-creative, footer {
   z-index: 2000 !important;
   position: relative;
 }
 .cart-modern {
-  z-index: 900 !important;
+  z-index: 3002 !important;
 }
 .footer-creative, footer {
   z-index: 2000 !important;
@@ -1839,24 +1673,11 @@ function getCookie(name) {
             <span class="cart-total-label">Total:</span>
             <span class="cart-total-value" id="cart-total">Rs. 0</span>
         </div>
-        <div id="payment-section-wrapper">
-              <div class="payment-methods mt-3">
-                <div class="d-flex justify-content-center mb-2">
-                  <button id="btn-cash" class="btn btn-danger me-2">Payment on delivery</button>
-                  <button id="btn-epay" class="btn btn-danger">E&#8209;Payment</button>
-                </div>
-                <div id="e-payment-section" style="display:none;text-align:center">
-                  <div class="mb-2">
-                    <img src="{% static 'images/food.jpeg' %}" alt="QR Code" style="max-width:160px;border:2px solid #eee;border-radius:8px;">
-                  </div>
-                  <div class="mb-2">
-                    <label for="payment-proof" class="form-label">Upload Payment Screenshot</label>
-                    <input type="file" id="payment-proof" class="form-control" accept="image/*">
-                  </div>
-                </div>
-                <button id="confirm-order-btn" class="btn btn-success mt-3 w-100">Confirm Order</button>
-              </div>
-            </div>
+        
+  
+    <button id="confirm-order-btn" class="btn btn-success mt-3 w-100">Confirm Order</button>
+  </div>
+</div>
         </div>
     </aside>
 
@@ -1929,13 +1750,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
-  // Blur add-to-cart buttons after click to remove focus visual
-  document.querySelectorAll('.add-to-cart').forEach(function(btn) {
-    btn.addEventListener('click', function(event) {
-      event.stopPropagation();
-      this.blur();
-    });
-  });
+
 
   // CART TOGGLE BUTTON LOGIC
   const cart = document.getElementById('cart');
@@ -2002,51 +1817,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-    <style>
-      /* Center Select Payment Method label */
-      @media (max-width: 600px) {
-        #payment-section-wrapper label,
-        #payment-section-wrapper .payment-label,
-        .payment-label {
-          display: block;
-          width: 100%;
-          text-align: center;
-          font-weight: 600;
-          font-size: 1.09rem;
-          margin-bottom: 0.5em;
-        }
-        .payment-buttons button,
-        #payment-section .segment-btn {
-          height: 64px !important;
-          min-height: 48px !important;
-        }
-      }
-    </>
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-  // Attach listeners to all Add to Cart buttons
-  document.querySelectorAll('.add-to-cart').forEach(function(btn) {
-    btn.addEventListener('click', function(event) {
-      event.stopPropagation();
-      this.blur();
-      const item = {
-        id: btn.getAttribute('data-id'),
-        name: btn.getAttribute('data-name'),
-        price: parseFloat(btn.getAttribute('data-price')),
-        quantity: 1
-      };
-      if (typeof window.addToCart === 'function') {
-        window.addToCart(item);
-      }
-    });
-  });
-  // Blur add-to-cart buttons after click to remove focus visual
-  document.querySelectorAll('.add-to-cart').forEach(function(btn) {
-    btn.addEventListener('click', function(event) {
-      event.stopPropagation();
-      this.blur();
-    });
-  });
         const footer = document.querySelector('footer');
         function positionCartButton() {
             if (!footer || !cartBtn) return;
@@ -2119,70 +1892,180 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     </script>
-        <script>
-            // Make cart and saveCart globally accessible
-            const cart = document.getElementById('cart');
-            const cartBtn = document.getElementById('cart-toggle-btn');
-            window.cart = {};
-            if (sessionStorage.getItem('cart')) {
-                window.cart = JSON.parse(sessionStorage.getItem('cart'));
-            }
-            window.saveCart = function() {
-                sessionStorage.setItem('cart', JSON.stringify(window.cart));
-            };
+<script>
+// Make cart and saveCart globally accessible
+const cart = document.getElementById('cart');
+const cartBtn = document.getElementById('cart-toggle-btn');
+window.cart = {};
+if (sessionStorage.getItem('cart')) {
+    window.cart = JSON.parse(sessionStorage.getItem('cart'));
+}
+window.saveCart = function() {
+    sessionStorage.setItem('cart', JSON.stringify(window.cart));
+};
 
-            function setupPaymentToggle() {
-    const btnCash = document.getElementById('btn-cash');
-    const btnEpay = document.getElementById('btn-epay');
-    const ePaymentSection = document.getElementById('e-payment-section');
-    if (!btnCash || !btnEpay || !ePaymentSection) return;
-    btnCash.addEventListener('click', function() {
-        btnCash.classList.add('active');
-        btnEpay.classList.remove('active');
-        ePaymentSection.style.display = 'none';
+function updateCartDisplay() {
+    let cartList = document.getElementById("cart-items");
+    cartList.innerHTML = "";
+    Object.keys(window.cart).forEach(itemId => {
+        const item = window.cart[itemId];
+        let li = document.createElement("li");
+        li.className = "cart-item";
+        li.setAttribute("data-id", String(itemId));
+        li.innerHTML = `
+            <div class="cart-item-main">
+                <span class="cart-item-name">${item.name}</span>
+                <span class="cart-item-price">Rs. ${item.price}</span>
+            </div>
+            <div class="quantity-controls">
+                <button class="quantity-btn decrease" data-id="${item.id}">-</button>
+                <span class="cart-item-quantity">${item.quantity}</span>
+                <button class="quantity-btn increase" data-id="${item.id}">+</button>
+            </div>
+            <button class="remove-from-cart" data-id="${item.id}" title="Remove">
+                <i class='bx bx-trash'></i>
+            </button>
+        `;
+        cartList.appendChild(li);
     });
-    btnEpay.addEventListener('click', function() {
-        btnCash.classList.remove('active');
-        btnEpay.classList.add('active');
-        ePaymentSection.style.display = 'block';
+
+    // Re-attach event listeners after updating cart HTML
+    document.querySelectorAll(".remove-from-cart").forEach(button => {
+        button.addEventListener("click", function(e) {
+            e.stopPropagation();
+            let itemId = this.getAttribute("data-id");
+            removeFromCart(itemId);
+        });
     });
+
+    document.querySelectorAll(".quantity-btn").forEach(button => {
+        button.addEventListener("click", function(e) {
+            e.stopPropagation();
+            let itemId = this.getAttribute("data-id");
+            let action = this.classList.contains("increase") ? "increase" : "decrease";
+            updateItemQuantity(itemId, action);
+        });
+    });
+
+    // Update cart count badge (if present)
+    const badge = document.getElementById("cart-count-badge");
+    const count = Object.values(window.cart).reduce((sum, item) => sum + item.quantity, 0);
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? "inline-block" : "none";
+    }
+
+    updateCartTotal();
 }
 
-function setupConfirmOrderBtn() {
-    const confirmBtn = document.getElementById('confirm-order');
-    if (!confirmBtn) return;
-    // ... existing confirm order logic ...
-}
-
-function renderPaymentSection() {
-    const wrapper = document.getElementById('payment-section-wrapper');
-    if (Object.keys(window.cart).length === 0) {
-        wrapper.innerHTML = '';
+function addToCart(item) {
+    const itemId = String(item.id);
+    if (!itemId || itemId === 'undefined' || itemId === 'null') {
+        alert('This item cannot be added to cart due to missing or invalid ID.');
         return;
     }
-    wrapper.innerHTML = `
-        <div id="payment-section">
-            <h3 style="margin-bottom:0.8em;">Select Payment Method</h3>
-            <div style="display:flex; justify-content:center; align-items:center; margin-bottom:1.2em;">
-                <div class="segmented-control" id="payment-segmented">
-                    <button type="button" class="segment-btn active" id="btn-cash">Payment on delivery</button>
-                    <div class="segment-divider"></div>
-                    <button type="button" class="segment-btn" id="btn-epay">E-Payment</button>
-                </div>
-            </div>
-            <div id="e-payment-section" style="display:none; margin-top:1em;">
-                <p>Scan the QR code below to pay the bill amount. Upload your payment screenshot below.</p>
-                <img src="{% static 'images/food.jpeg' %}" alt="QR Code" style="width:200px;height:200px;">
-                <input type="file" id="payment-proof" accept="image/*" style="margin-top:0.5em;">
-            </div>
-
-        </div>
-    `;
-    setupPaymentToggle();
-
+    if (window.cart[itemId]) {
+        alert('Item already in cart. Adjust the quantity using + or - in your cart.');
+        return;
+    } else {
+        window.cart[itemId] = {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: 1
+        };
+        window.saveCart();
+        updateCartDisplay();
+        showToast('Added to cart!');
+    }
 }
-window.renderPaymentSection = renderPaymentSection;
+window.addToCart = addToCart;
 
+function removeFromCart(itemId) {
+    delete window.cart[itemId];
+    window.saveCart();
+    updateCartDisplay();
+}
+window.removeFromCart = removeFromCart;
+
+function updateItemQuantity(itemId, action) {
+    itemId = String(itemId);
+    const wasOpen = cart.classList.contains('active');
+    if (window.cart[itemId]) {
+        if (action === "increase") {
+            window.cart[itemId].quantity++;
+        } else if (action === "decrease" && window.cart[itemId].quantity > 1) {
+            window.cart[itemId].quantity--;
+        }
+        window.saveCart();
+        updateCartDisplay();
+        if (wasOpen) {
+            cart.classList.add('active');
+            cart.style.display = 'flex';
+            cartBtn.classList.add('active');
+            cartBtn.innerHTML = "<i class='bx bx-x'></i>";
+            cartBtn.style.display = 'none';
+        }
+    }
+}
+
+function updateCartTotal() {
+    let total = 0;
+    Object.values(window.cart).forEach(item => {
+        total += item.price * item.quantity;
+    });
+    document.getElementById('cart-total').textContent = 'Rs. ' + total;
+}
+
+// Confirm order logic (NO payment logic)
+function confirmOrder() {
+    if (Object.keys(window.cart).length === 0) {
+        alert("Your cart is empty!");
+        return;
+    }
+    var roomNo = sessionStorage.getItem('room_no');
+    if (!roomNo) {
+        alert('Room number not found. Please rescan the QR code to continue.');
+        return;
+    }
+    fetch('/confirm-order/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.getElementById('csrf_token').value
+        },
+        body: JSON.stringify({ items: Object.values(window.cart), room_no: roomNo })
+    })
+    .then(response => {
+        alert('Fetch response received. Status: ' + response.status);
+        return response.json();
+    })
+    .then(data => {
+        alert('Server response: ' + JSON.stringify(data));
+        if (data.success) {
+            alert("Order Confirmed!");
+            window.cart = {};
+            sessionStorage.removeItem('cart');
+            window.saveCart();
+            updateCartDisplay();
+        } else {
+            alert("There was an issue confirming the order.");
+        }
+    })
+    .catch(error => { alert('Fetch error: ' + error); console.error('Error:', error); });
+}
+// Attach confirmOrder to the confirm button
+const confirmBtn = document.getElementById('confirm-order');
+if (confirmBtn) {
+    confirmBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        confirmOrder();
+    });
+}
+// Initialize cart display on page load
+updateCartDisplay();
+</script>
+<script>
 document.addEventListener("DOMContentLoaded", function() {
                 function updateCartDisplay() {
                     console.log('[MOBILE DEBUG] updateCartDisplay CALLED. Cart:', window.cart);
@@ -2240,31 +2123,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     updateCartTotal();
                 }
 
-                function addToCart(item) {
-    console.log('addToCart called with:', item);
-    const itemId = String(item.id);
-    console.log('itemId:', itemId);
-    console.log('Current cart before add:', window.cart);
-    if (!itemId || itemId === 'undefined' || itemId === 'null') {
-        alert('This item cannot be added to cart due to missing or invalid ID.');
-        return;
-    }
-    if (window.cart[itemId]) {
-        alert('Item already in cart. Adjust the quantity using + or - in your cart.');
-        return;
-    } else {
-        window.cart[itemId] = {
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: 1
-        };
-        window.saveCart();
-        updateCartDisplay();
-        console.log('Cart after add:', window.cart);
-    }
-}
-                window.addToCart = addToCart;
+                // End of updateCartDisplay function
+            // End of DOMContentLoaded
+            });
+
+window.addToCart = addToCart;
 
                 function removeFromCart(itemId) {
                     delete window.cart[itemId];
@@ -2300,143 +2163,49 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Initialize cart display on page load
                 updateCartDisplay();
 
-                // Payment section logic
-                function setupPaymentToggle() {
-                    const btnCash = document.getElementById('btn-cash');
-                    const btnEpay = document.getElementById('btn-epay');
-                    const ePaymentSection = document.getElementById('e-payment-section');
-                    if (!btnCash || !btnEpay || !ePaymentSection) return;
-                    btnCash.addEventListener('click', function() {
-                        btnCash.classList.add('active');
-                        btnEpay.classList.remove('active');
-                        ePaymentSection.style.display = 'none';
-                    });
-                    btnEpay.addEventListener('click', function() {
-                        btnCash.classList.remove('active');
-                        btnEpay.classList.add('active');
-                        ePaymentSection.style.display = 'block';
-                    });
+                // Confirm order logic (NO payment logic)
+                function confirmOrder() {
+                    if (Object.keys(window.cart).length === 0) {
+                        alert("Your cart is empty!");
+                        return;
+                    }
+                    fetch('/confirm-order/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.getElementById('csrf_token').value
+                        },
+                        body: JSON.stringify({ items: Object.values(window.cart) })
+                    })
+                    .then(response => {
+                        alert('Fetch response received. Status: ' + response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        // alert('Server response: ' + JSON.stringify(data)); // Optionally keep for debugging
+                        if (data.success) {
+                            showToast("Order Confirmed!");
+                            window.cart = {};
+                            sessionStorage.removeItem('cart');
+                            window.saveCart();
+                            updateCartDisplay();
+                        } else {
+                            showToast("There was an issue confirming the order.", true);
+                        }
+                    })
+                    .catch(error => { alert('Fetch error: ' + error); console.error('Error:', error); });
                 }
 
-                // Re-render payment section when cart changes
-function renderPaymentSection() {
-    const wrapper = document.getElementById('payment-section-wrapper');
-    if (Object.keys(window.cart).length === 0) {
-        wrapper.innerHTML = '';
-        return;
-    }
-    wrapper.innerHTML = `
-        <div id="payment-section">
-            <h3 style="margin-bottom:0.8em;">Select Payment Method</h3>
-            <div style="display:flex; justify-content:center; align-items:center; margin-bottom:1.2em;">
-                <div class="segmented-control" id="payment-segmented">
-                    <button type="button" class="segment-btn active" id="btn-cash">Payment on delivery</button>
-                    <div class="segment-divider"></div>
-                    <button type="button" class="segment-btn" id="btn-epay">E-Payment</button>
-                </div>
-            </div>
-            <div id="e-payment-section" style="display:none; margin-top:1em;">
-                <p>Scan the QR code below to pay the bill amount. Upload your payment screenshot below.</p>
-                <img src="{% static 'images/food.jpeg' %}" alt="QR Code" style="width:200px;height:200px;">
-                <input type="file" id="payment-proof" accept="image/*" style="margin-top:0.5em;">
-            </div>
-
-        </div>
-    `;
-    setupPaymentToggle();
-
-}
-window.renderPaymentSection = renderPaymentSection;
-
-
-                // Confirm order logic
-                function setupConfirmOrderBtn() {
-                    const confirmBtn = document.getElementById('confirm-order-btn');
-                    if (!confirmBtn) return;
+                // Attach confirmOrder to the confirm button
+                const confirmBtn = document.getElementById('confirm-order');
+                if (confirmBtn) {
                     confirmBtn.addEventListener('click', function(e) {
-                        alert('Confirm button clicked!');
-                        const btnCash = document.getElementById('btn-cash');
-                        const btnEpay = document.getElementById('btn-epay');
-                        let paymentMethod = 'Cash';
-                        if (btnEpay && btnEpay.classList.contains('active')) paymentMethod = 'E-Payment';
-                        if (Object.keys(window.cart).length === 0) {
-                            alert("Your cart is empty!");
-                            return;
-                        }
-                        // E-Payment proof validation
-                        if (paymentMethod === 'E-Payment') {
-                            const paymentProofInput = document.getElementById('payment-proof');
-                            if (!paymentProofInput || !paymentProofInput.files || paymentProofInput.files.length === 0) {
-                                alert('Please upload a screenshot as proof of payment for E-Payment.');
-                                e.preventDefault();
-                                return false;
-                            }
-                        }
-                        if (paymentMethod === 'Cash') {
-                            fetch('/confirm-order/', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': document.getElementById('csrf_token').value
-                                },
-                                body: JSON.stringify({ items: Object.values(window.cart), payment_method: 'Cash' })
-                            })
-                            .then(response => {
-                                    alert('Fetch response received (Cash). Status: ' + response.status);
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    alert('Server response (Cash): ' + JSON.stringify(data));
-                                    if (data.success) {
-                                        alert("Order Confirmed!");
-                                        window.cart = {};
-                                        sessionStorage.removeItem('cart');
-                                        window.saveCart();
-                                        updateCartDisplay();
-                                        // renderPaymentSection(); // Removed to prevent ReferenceError
-                                    } else {
-                                        alert("There was an issue confirming the order.");
-                                    }
-                                })
-                                .catch(error => { alert('Fetch error (Cash): ' + error); console.error('Error:', error); });
-                        } else if (paymentMethod === 'E-Payment') {
-                            const paymentProof = document.getElementById('payment-proof').files[0];
-                            if (!paymentProof) {
-                                alert('Please upload your payment screenshot.');
-                                return;
-                            }
-                            const formData = new FormData();
-                            formData.append('items', JSON.stringify(Object.values(window.cart)));
-                            formData.append('payment_method', paymentMethod);
-                            formData.append('payment_proof', paymentProof);
-                            fetch('/confirm-order/', {
-                                method: 'POST',
-                                body: formData,
-                                headers: {
-                                    'X-CSRFToken': document.getElementById('csrf_token').value
-                                }
-                            })
-                            .then(response => {
-                                    alert('Fetch response received (E-Payment). Status: ' + response.status);
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    alert('Server response (E-Payment): ' + JSON.stringify(data));
-                                    if (data.success) {
-                                        alert("Order placed! Your payment will be verified.");
-                                        window.cart = {};
-                                        sessionStorage.removeItem('cart');
-                                        window.saveCart();
-                                        updateCartDisplay();
-                                        // renderPaymentSection(); // Removed to prevent ReferenceError
-                                    } else {
-                                        alert("Order failed: " + data.message);
-                                    }
-                                })
-                                .catch(error => { alert('Fetch error (E-Payment): ' + error); console.error('Error:', error); });
-                        }
+                        e.preventDefault();
+                        confirmOrder();
                     });
                 }
+            
+        
 
                 // Update cart total dynamically
                 function updateCartTotal() {
@@ -2445,13 +2214,36 @@ window.renderPaymentSection = renderPaymentSection;
                         total += item.price * item.quantity;
                     });
                     document.getElementById('cart-total').textContent = 'Rs. ' + total;
-                }
-            });
-        // Place all JS code inside the script block, not after it.
-        </script>
+                }    
+// --- QR Scan Enforcement Logic ---
+(function() {
+  // Helper to clear room_no on unload
+  function clearRoomNo() {
+    sessionStorage.removeItem('room_no');
+  }
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// (Paste all your custom JavaScript here that was previously after {% endblock %})
+  // Attach beforeunload to clear room_no unless order is placed
+  window.addEventListener('beforeunload', clearRoomNo);
+
+  // On DOMContentLoaded, check for room_no
+  document.addEventListener('DOMContentLoaded', function() {
+    var roomNo = sessionStorage.getItem('room_no');
+    if (!roomNo) {
+      alert('Room number not found. Please scan the QR code to continue.');
+      // Optionally redirect to a scan page, or reload location
+      // window.location.href = '/scan-qr/'; // Uncomment if you have a scan page
+    }
+
+    // When order is confirmed, remove beforeunload so room_no isn't cleared after order
+    var confirmBtn = document.getElementById('confirm-order-btn') || document.getElementById('confirm-order');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function() {
+        window.removeEventListener('beforeunload', clearRoomNo);
+      });
+    }
+  });
+})();
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

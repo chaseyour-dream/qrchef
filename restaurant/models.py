@@ -67,8 +67,20 @@ class CartItem(models.Model):
 
 class WebsiteVisit(models.Model):
     count = models.PositiveIntegerField(default=0)
+
     def __str__(self):
         return f"Website Visits: {self.count}"
+
+class DashboardStats(models.Model):
+    rooms = models.PositiveIntegerField(default=0)
+    happy_guests = models.PositiveIntegerField(default=0)
+    dishes_served = models.PositiveIntegerField(default=0)
+    staff_members = models.PositiveIntegerField(default=0)
+    dishes_limit = models.PositiveIntegerField(default=10000, help_text="Limit for Dishes Served animation")
+    guests_limit = models.PositiveIntegerField(default=2000, help_text="Limit for Happy Guests animation")
+
+    def __str__(self):
+        return "Dashboard Stats"
 
 # User Profile for photo upload
 class Profile(models.Model):
@@ -88,3 +100,5 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
             instance.profile.save()
         except Profile.DoesNotExist:
             Profile.objects.create(user=instance)
+            
+

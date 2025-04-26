@@ -683,6 +683,14 @@
         }
       });
     </script>
+    <script>
+      // Increment website visits on every page load
+      fetch('/api/website-visits/', { method: 'GET' })
+        .then(response => response.json())
+        .then(data => {
+          // Optionally, you could update a global JS variable or trigger an event here
+        });
+    </script>
     <footer class="footer-creative">
         <div class="footer-main-row">
           <div class="footer-logo">
