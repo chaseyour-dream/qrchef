@@ -1,6 +1,6 @@
 import qrcode
 
-BASE_URL = "http://192.168.15.69:8000/menu/?room="  # Change to your production URL if needed
+BASE_URL = "http://192.168.15.68:8000/menu/?room="  # Change to your production URL if needed
 
 room_numbers = range(101, 111)  # Example: Rooms 101 to 110
 
