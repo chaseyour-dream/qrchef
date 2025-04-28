@@ -351,90 +351,22 @@
     <section class="rooms-section spad">
       <div class="container">
         <div class="room-list">
-          <!-- Room 1 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-1.jpg' %}" alt="Premium King Room" />
-            <div class="ri-text">
-              <h4>Premium King Room</h4>
-              <h3 class="room-price">49$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 3 people</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Room 2 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-2.jpg' %}" alt="Deluxe Room" />
-            <div class="ri-text">
-              <h4>Deluxe Room</h4>
-              <h3 class="room-price">39$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 5 people</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Room 3 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-3.jpg' %}" alt="Double Room" />
-            <div class="ri-text">
-              <h4>Double Room</h4>
-              <h3 class="room-price">29$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 2 people</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Room 4 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-4.jpg' %}" alt="Luxury Room" />
-            <div class="ri-text">
-              <h4>Luxury Room</h4>
-              <h3 class="room-price">25$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 1 person</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Room 5 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-5.jpg' %}" alt="Room With View" />
-            <div class="ri-text">
-              <h4>Room With View</h4>
-              <h3 class="room-price">19$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 1 person</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Room 6 -->
-          <div class="room-item">
-            <img src="{% static 'images/room-6.jpg' %}" alt="Small View" />
-            <div class="ri-text">
-              <h4>Small View</h4>
-              <h3 class="room-price">10$<span>/Per Night</span></h3>
-              <div class="room-features">
-                <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> 30 ft</div>
-                <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> Max 2 people</div>
-                <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> King Bed</div>
-                <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> Wifi, Television, Bathroom,...</div>
-              </div>
-            </div>
-          </div>
+  {% for room in rooms %}
+    <div class="room-item">
+      <img src="{{ room.image.url }}" alt="{{ room.name }}" />
+      <div class="ri-text">
+        <h4>{{ room.name }}</h4>
+        <h3 class="room-price">{{ room.price }}<span>/Per Night</span></h3>
+        <div class="room-features">
+          <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> {{ room.size }}</div>
+          <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> {{ room.capacity }}</div>
+          <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> {{ room.bed }}</div>
+          <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> {{ room.services }}</div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
         </div>
       </div>
     </section>

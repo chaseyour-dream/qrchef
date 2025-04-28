@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats
+from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats, Room
 from django.contrib import messages
 from datetime import datetime, timedelta
 from django.utils import timezone
@@ -102,4 +102,9 @@ class DashboardStatsAdmin(admin.ModelAdmin):
 admin.site.register(DashboardStats, DashboardStatsAdmin)
 admin.site.register(FoodItem, FoodItemAdmin)
 admin.site.register(Order, OrderAdmin)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ("name", "price", "size", "capacity", "bed", "services")
+    search_fields = ("name", "size", "capacity", "bed", "services")
+
+admin.site.register(Room, RoomAdmin)
 admin.site.register(Category, CategoryAdmin)

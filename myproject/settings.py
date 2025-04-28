@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-v)s7wmc3)za=5+q0f*weh%=$2do_ri1(*wv3xa5$8w_3e3)gr&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.10', '192.168.15.68']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.15.68','192.168.110.49']
 
 
 INSTALLED_APPS = [
@@ -165,10 +165,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your_gmail_address@gmail.com'  # <-- Replace with your Gmail address
+EMAIL_HOST_USER = 'pariwartanpaudel@gmail.com'  # <-- Replace with your Gmail address
 EMAIL_HOST_PASSWORD = 'your_gmail_app_password'   # <-- Replace with your Gmail app password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

@@ -86,6 +86,18 @@ class DashboardStats(models.Model):
     def __str__(self):
         return "Dashboard Stats"
 
+class Room(models.Model):
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=8, decimal_places=2)
+    image = models.ImageField(upload_to='rooms/')
+    size = models.CharField(max_length=50)
+    capacity = models.CharField(max_length=50)
+    bed = models.CharField(max_length=50)
+    services = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+
 # User Profile for photo upload
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

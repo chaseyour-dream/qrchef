@@ -98,8 +98,11 @@ def login_page(request):
     return render(request, 'login.html')
 
 # Room Page
+from .models import Room
+
 def room(request):
-    return render(request, 'room.html')
+    rooms = Room.objects.all()
+    return render(request, 'room.html', {'rooms': rooms})
 
 # About Us Page
 def aboutus(request):
