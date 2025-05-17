@@ -162,7 +162,22 @@ JAZZMIN_SETTINGS = {
         "restaurant.websitevisit": "fas fa-globe",
         "auth.user": "fas fa-user",
         "auth.group": "fas fa-users",
+        "restaurant.Room": "fas fa-bed",
+        "restaurant.RoomCategory": "fas fa-tags",
+        "restaurant.RoomOrder": "fas fa-receipt",
+        "restaurant.Profile": "fas fa-user",
     },
+    "ordered_models": [
+        ('restaurant.Category', {"label": "Food Categories"}),
+        "restaurant.dashboardstats",
+        "restaurant.food", # Assuming Food is the model name
+        "restaurant.room",
+        "restaurant.roomcategory",
+        "restaurant.roomorder",
+        "restaurant.websitevisit",
+        "auth.user",
+        "auth.group",
+    ],
     "custom_links": {
         "restaurant": [{
             "name": "Sales Analytics",

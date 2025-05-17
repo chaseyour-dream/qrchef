@@ -9,7 +9,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     class Meta:
-        verbose_name_plural = 'Categories'
+        verbose_name_plural = 'Food Categories'
     
     def __str__(self):
         return self.name
@@ -31,6 +31,9 @@ class RoomCategory(models.Model):
         null=True,
         blank=True
     )
+
+    class Meta:
+        verbose_name_plural = 'Room Categories'
 
     def get_room_numbers_list(self):
         if not self.room_numbers:
