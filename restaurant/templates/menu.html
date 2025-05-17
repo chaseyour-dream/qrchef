@@ -80,7 +80,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Attach quantity and remove event listeners
     cartList.querySelectorAll('.cart-increment').forEach(btn => {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation(); // Stop event from bubbling
         const id = this.getAttribute('data-id');
         window.cart[id].quantity++;
         saveCart();
@@ -88,7 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
     cartList.querySelectorAll('.cart-decrement').forEach(btn => {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation(); // Stop event from bubbling
         const id = this.getAttribute('data-id');
         if (window.cart[id].quantity > 1) {
           window.cart[id].quantity--;
@@ -1941,241 +1943,292 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
     </div>
-    <!-- Add Confirm Order button at the bottom of the menu page -->
-    <div style="text-align:center; margin: 2em 0;">
-      <button id="confirm-order" class="btn btn-success cart-confirm-btn">Confirm Order</button>
-    </div>
     {% endblock %}
 
 {% block extra_scripts %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // --- Cart Initialization ---
-  window.cart = {};
-  if (sessionStorage.getItem('cart')) {
-    window.cart = JSON.parse(sessionStorage.getItem('cart'));
-  }
-  function saveCart() {
-    sessionStorage.setItem('cart', JSON.stringify(window.cart));
-  }
-  function updateCartDisplay() {
-    let cartList = document.getElementById('cart-items');
-    if (!cartList) return;
-    cartList.innerHTML = '';
-    let total = 0;
-    Object.keys(window.cart).forEach(itemId => {
-      const item = window.cart[itemId];
-      let li = document.createElement('li');
-      li.className = 'cart-item cart-item-col d-flex align-items-center justify-content-between mb-2';
-      li.innerHTML = `
-        <span class="cart-item-name-col">${item.name}</span>
-        <div class="cart-qty-col">
-          <button class="cart-decrement" data-id="${itemId}">-</button>
-          <span class="cart-qty-number">${item.quantity}</span>
-          <button class="cart-increment" data-id="${itemId}">+</button>
-        </div>
-        <span class="cart-item-price-col">₹${item.price * item.quantity}</span>
-        <button class="cart-remove-btn" data-id="${itemId}">&times;</button>
-      `;
-      cartList.appendChild(li);
-      total += item.price * item.quantity;
-    });
-    // Update badge
-    const badge = document.getElementById('cart-count-badge');
-    const count = Object.values(window.cart).reduce((sum, item) => sum + item.quantity, 0);
-    if (badge) {
-      badge.textContent = count;
-      badge.style.display = count > 0 ? 'inline-block' : 'none';
-    }
-    // Update cart total
-    const totalElem = document.getElementById('cart-total');
-    if (totalElem) {
-      totalElem.textContent = 'Rs. ' + total;
-    }
-    // Attach quantity and remove event listeners
-    cartList.querySelectorAll('.cart-increment').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        window.cart[id].quantity++;
-        saveCart();
-        updateCartDisplay();
-      });
-    });
-    cartList.querySelectorAll('.cart-decrement').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        if (window.cart[id].quantity > 1) {
-          window.cart[id].quantity--;
-        } else {
-          delete window.cart[id];
-        }
-        saveCart();
-        updateCartDisplay();
-      });
-    });
-    cartList.querySelectorAll('.cart-remove-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        delete window.cart[id];
-        saveCart();
-        updateCartDisplay();
-      });
-    });
-  }
-  function addToCart(item) {
-    const itemId = String(item.id);
-    if (!itemId || itemId === 'undefined' || itemId === 'null') {
-      alert('Invalid item ID.');
-      return;
-    }
-    
-    // Initialize cart if it doesn't exist
-    if (!window.cart) {
-      window.cart = {};
-    }
-    
-    // Check if item exists in cart
-    if (window.cart[itemId]) {
-      // If item exists but has zero or negative quantity, remove it
-      if (window.cart[itemId].quantity <= 0) {
-        delete window.cart[itemId];
-      } else {
-        alert('Item already in cart.');
-        return;
-      }
-    }
-    
-    // Add new item to cart
-    window.cart[itemId] = { ...item, quantity: 1 };
-    saveCart();
-    updateCartDisplay();
-  }
-  window.addToCart = addToCart;
-  // Attach listeners to all Add to Cart buttons
-  document.querySelectorAll('.add-to-cart').forEach(function(btn) {
-    // Remove any existing click listeners
-    btn.replaceWith(btn.cloneNode(true));
-    // Get the fresh reference after cloning
-    const freshBtn = document.querySelector(`.add-to-cart[data-id="${btn.getAttribute('data-id')}"]`);
-    freshBtn.addEventListener('click', function(event) {
-      event.stopPropagation();
-      this.blur();
-      const item = {
-        id: freshBtn.getAttribute('data-id'),
-        name: freshBtn.getAttribute('data-name'),
-        price: parseFloat(freshBtn.getAttribute('data-price')),
-        quantity: 1
-      };
-      window.addToCart(item);
-    });
-  });
-  // Cart sidebar open/close
-  const cart = document.getElementById('cart');
-  const floatingCartBtn = document.getElementById('floating-cart-btn');
-  const cartCloseBtn = document.getElementById('cart-close-btn');
-  if (floatingCartBtn && cart) {
-    floatingCartBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      cart.classList.toggle('active');
-      cart.style.display = cart.classList.contains('active') ? 'flex' : 'none';
-    });
-  }
-  if (cartCloseBtn && cart) {
-    cartCloseBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      cart.classList.remove('active');
-      cart.style.display = 'none';
-    });
-  }
-  document.addEventListener('click', function(e) {
-    if (
-      cart && cart.classList.contains('active') &&
-      !cart.contains(e.target) &&
-      e.target !== floatingCartBtn &&
-      !(floatingCartBtn && floatingCartBtn.contains(e.target))
-    ) {
-      cart.classList.remove('active');
-      cart.style.display = 'none';
-    }
-  });
-  // Confirm order button logic is now handled above. Duplicate removed.
-  // (No code here)
-
-  updateCartDisplay();
-});
+  <script>
+    // Ensure the DOM is fully loaded before running scripts that interact with elements.
     document.addEventListener('DOMContentLoaded', function() {
-        const footer = document.querySelector('footer');
-        function positionCartButton() {
-            if (!footer || !cartBtn) return;
-            const footerRect = footer.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            // Place the button 1rem above the footer if footer is visible
-            let bottomGap = windowHeight - footerRect.top + 16; // 16px ~ 1rem
-            if (footerRect.top < windowHeight) {
-                cartBtn.style.bottom = bottomGap + 'px';
-            } else {
-                cartBtn.style.bottom = '2.2rem'; // fallback if footer not visible
-            }
-        }
-        positionCartButton();
-        window.addEventListener('resize', positionCartButton);
-        window.addEventListener('scroll', positionCartButton);
-        // Hide cart by default
-        cart.classList.remove('active');
-        cart.style.display = 'none';
-        // Toggle cart on button click
-        cartBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (cart.classList.contains('active')) {
-                cart.classList.remove('active');
-                cart.style.display = 'none';
-                cartBtn.classList.remove('active');
-                cartBtn.innerHTML = "<i class='bx bx-cart'></i>";
-                cartBtn.style.display = 'block';
-                cartBtn.innerHTML = "<i class='bx bx-cart'></i>";
-                cartBtn.style.display = 'block';
-            } else {
-                cart.classList.add('active');
-                cart.style.display = 'flex';
-                cartBtn.classList.add('active');
-                cartBtn.innerHTML = "<i class='bx bx-x'></i>";
-                cartBtn.style.display = 'none'; // Hide floating toggle button when cart is open
-            }
+
+      // --- Cart Initialization ---
+      window.cart = {};
+      if (sessionStorage.getItem('cart')) {
+        window.cart = JSON.parse(sessionStorage.getItem('cart'));
+      }
+
+      function saveCart() {
+        sessionStorage.setItem('cart', JSON.stringify(window.cart));
+      }
+      window.saveCart = saveCart; // Expose to global scope if needed elsewhere
+
+      function updateCartDisplay() {
+        let cartList = document.getElementById('cart-items');
+        if (!cartList) return; // Exit if cartList is not found
+
+        cartList.innerHTML = '';
+        let total = 0;
+
+        // Use Object.values for potentially better performance if item key doesn't matter
+        Object.keys(window.cart).forEach(itemId => {
+          const item = window.cart[itemId];
+          let li = document.createElement('li');
+          li.className = 'cart-item cart-item-col d-flex align-items-center justify-content-between mb-2';
+          // Use template literals for cleaner HTML generation
+          li.innerHTML = `
+            <span class="cart-item-name-col">${item.name}</span>
+            <div class="cart-qty-col">
+              <button class="cart-decrement" data-id="${itemId}">-</button>
+              <span class="cart-qty-number">${item.quantity}</span>
+              <button class="cart-increment" data-id="${itemId}">+</button>
+            </div>
+            <span class="cart-item-price-col">Rs. ${item.price * item.quantity}</span> {# Use Rs. here #}
+            <button class="cart-remove-btn" data-id="${itemId}">&times;</button>
+          `;
+          cartList.appendChild(li);
+          total += item.price * item.quantity;
         });
-        // Also update the icon on page load
-        if (cart.classList.contains('active')) {
-            cartBtn.innerHTML = "<i class='bx bx-x'></i>";
-            cartBtn.style.display = 'none';
+
+        // Update badge
+        const badge = document.getElementById('cart-count-badge');
+        const count = Object.values(window.cart).reduce((sum, item) => sum + item.quantity, 0);
+        if (badge) {
+          badge.textContent = count;
+          badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+
+        // Update cart total
+        const totalElem = document.getElementById('cart-total');
+        if (totalElem) {
+          totalElem.textContent = 'Rs. ' + total; {# Use Rs. here #}
+        }
+
+        // Attach quantity and remove event listeners using event delegation or re-attaching
+        // Re-attaching listeners is necessary when cartList.innerHTML is reset
+        cartList.querySelectorAll('.cart-increment').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = this.getAttribute('data-id');
+            // Ensure item exists before incrementing
+            if (window.cart[id]) {
+                window.cart[id].quantity++;
+                saveCart();
+                updateCartDisplay();
+            }
+          });
+        });
+
+        cartList.querySelectorAll('.cart-decrement').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = this.getAttribute('data-id');
+            // Ensure item exists before decrementing
+            if (window.cart[id]) {
+                if (window.cart[id].quantity > 1) {
+                  window.cart[id].quantity--;
+                } else {
+                  // If quantity is 1, remove the item
+                  delete window.cart[id];
+                }
+                saveCart();
+                updateCartDisplay();
+            }
+          });
+        });
+
+        cartList.querySelectorAll('.cart-remove-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            // Ensure item exists before removing
+            if (window.cart[id]) {
+                delete window.cart[id];
+                saveCart();
+                updateCartDisplay();
+            }
+          });
+        });
+      }
+      window.updateCartDisplay = updateCartDisplay; // Expose to global scope
+
+      function addToCart(item) {
+        const itemId = String(item.id);
+        if (!itemId || itemId === 'undefined' || itemId === 'null') {
+          alert('Invalid item ID.');
+          return;
+        }
+
+        // Initialize cart if it doesn't exist
+        if (!window.cart) {
+          window.cart = {};
+        }
+
+        // Check if item exists in cart
+        if (window.cart[itemId]) {
+           // Increment quantity if item exists
+           window.cart[itemId].quantity++;
         } else {
-            cartBtn.innerHTML = "<i class='bx bx-cart'></i>";
-            cartBtn.style.display = 'block';
+          // Add new item to cart with quantity 1
+          window.cart[itemId] = { ...item, quantity: 1 };
         }
-        // Close cart when clicking the close button in header
-        document.getElementById('cart-close-btn').addEventListener('click', function(e) {
-            e.stopPropagation();
-            cart.classList.remove('active');
-            cart.style.display = 'none';
-            cartBtn.classList.remove('active');
-            cartBtn.innerHTML = "<i class='bx bx-cart'></i>";
-            cartBtn.style.display = 'block';
+
+        saveCart();
+        updateCartDisplay();
+        // Optional: Provide user feedback like a small notification
+        console.log('Item added to cart:', item);
+      }
+      window.addToCart = addToCart; // Expose to global scope
+
+      // Attach listeners to all Add to Cart buttons - Using event delegation for robustness
+      // Find a suitable parent element that exists when the script runs
+      const menuContainer = document.querySelector('.container.my-4'); // Or a more specific parent if available
+      if (menuContainer) {
+        menuContainer.addEventListener('click', function(event) {
+          const btn = event.target.closest('.add-to-cart');
+          if (btn) {
+            event.stopPropagation();
+            btn.blur();
+            const item = {
+              id: btn.getAttribute('data-id'),
+              name: btn.getAttribute('data-name'),
+              price: parseFloat(btn.getAttribute('data-price')),
+              quantity: 1 // Starting quantity is always 1 when adding from menu
+            };
+            window.addToCart(item);
+          }
         });
-        // Hide cart when clicking outside
-        document.addEventListener('click', function(e) {
-            if (
-                cart.classList.contains('active') &&
-                !cart.contains(e.target) &&
-                e.target !== cartBtn &&
-                !cartBtn.contains(e.target)
-            ) {
-                cart.classList.remove('active');
-                cart.style.display = 'none';
-                cartBtn.classList.remove('active');
-                cartBtn.innerHTML = "<i class='bx bx-cart'></i>";
-                cartBtn.style.display = 'block';
-            }
+      }
+
+      // --- Floating Cart Button & Sidebar Logic ---
+      var cartSidebar = document.getElementById('cart');
+      var floatingCartBtn = document.getElementById('floating-cart-btn');
+      var cartCloseBtn = document.getElementById('cart-close-btn');
+
+      // Open cart sidebar
+      if (floatingCartBtn && cartSidebar) {
+        floatingCartBtn.addEventListener('click', function() {
+          cartSidebar.style.display = 'flex';
+          setTimeout(function() { cartSidebar.classList.add('active'); }, 10);
         });
-    });
-    </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      }
+
+      // Custom close button logic for cart sidebar
+      if (cartCloseBtn && cartSidebar) {
+        cartCloseBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          cartSidebar.classList.remove('active');
+          // Add a small delay to allow transition before hiding
+          setTimeout(function() { cartSidebar.style.display = 'none'; }, 180);
+        });
+      }
+
+      // Close cart sidebar when clicking outside
+      document.addEventListener('click', function(e) {
+        if (
+          cartSidebar && cartSidebar.classList.contains('active') &&
+          !cartSidebar.contains(e.target) &&
+          e.target !== floatingCartBtn && // Don't close if clicking the toggle button itself
+          !(floatingCartBtn && floatingCartBtn.contains(e.target)) // Handle clicks on the toggle button's children
+        ) {
+          cartSidebar.classList.remove('active');
+          setTimeout(function() { cartSidebar.style.display = 'none'; }, 180);
+        }
+      });
+
+      // Accessibility: close with Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && cartSidebar.classList.contains('active')) {
+          cartSidebar.classList.remove('active');
+          setTimeout(function() { cartSidebar.style.display = 'none'; }, 180);
+        }
+      });
+
+      // --- Confirm Order Logic ---
+      function confirmOrder(e) {
+        e.preventDefault();
+        const confirmBtn = document.getElementById('confirm-order');
+        if (confirmBtn) confirmBtn.disabled = true; // Disable button to prevent double clicks
+
+        if (Object.keys(window.cart).length === 0) {
+          alert('Your cart is empty!');
+          if (confirmBtn) confirmBtn.disabled = false;
+          return;
+        }
+
+        var roomNo = sessionStorage.getItem('room_no');
+        var qrScanTimestamp = sessionStorage.getItem('qr_scan_time');
+
+        if (roomNo && qrScanTimestamp) {
+          var now = Date.now();
+          var elapsed = now - parseFloat(qrScanTimestamp) * 1000;
+          if (elapsed > 15 * 60 * 1000) { // 15 minutes in ms
+            alert('Session expired! Please scan the QR code again.');
+            sessionStorage.removeItem('room_no');
+            sessionStorage.removeItem('qr_scan_time');
+            if (confirmBtn) confirmBtn.disabled = false;
+            // Optional: Redirect to index or QR scan page
+            // window.location.href = "{% url 'index' %}";
+            return;
+          }
+        }
+
+        if (!roomNo) {
+          alert('Room number not found. Please scan the QR code.');
+          if (confirmBtn) confirmBtn.disabled = false;
+          return;
+        }
+
+        // Fetch API to send order data
+        fetch('{% url "confirm_order" %}', { // Use Django URL tag
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.getElementById('csrf_token').value, // Get CSRF token from hidden input
+          },
+          body: JSON.stringify({
+            items: Object.values(window.cart),
+            room_no: roomNo
+          })
+        })
+        .then(response => {
+          if (!response.ok) {
+              // Handle HTTP errors
+              return response.json().then(err => {
+                  throw new Error('Server responded with an error: ' + (err.error || response.statusText));
+              });
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            alert('Order Confirmed! Total Bill: Rs. ' + data.total_bill); // Display total bill
+            window.cart = {}; // Clear cart on success
+            sessionStorage.removeItem('cart');
+            window.saveCart();
+            window.updateCartDisplay();
+            // Optional: Redirect to a success page or show a success message
+          } else {
+            alert('There was an issue confirming the order: ' + data.error); // Display specific error
+          }
+        })
+        .catch(error => {
+          alert('Error during order confirmation: ' + error);
+        })
+        .finally(() => {
+          if (confirmBtn) confirmBtn.disabled = false; // Re-enable button
+        });
+      }
+
+      // Attach event listener to Confirm Order button
+      const confirmBtn = document.getElementById('confirm-order');
+      if (confirmBtn) {
+        // Ensure no previous listeners are attached if script runs multiple times
+        confirmBtn.removeEventListener('click', confirmOrder); // Remove existing listener
+        confirmBtn.addEventListener('click', confirmOrder); // Add the listener
+      }
+
+      // Initial cart display update on load
+      updateCartDisplay();
+
+    }); // End DOMContentLoaded
+  </script>
 {% endblock %}
