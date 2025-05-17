@@ -53,9 +53,12 @@ class OrderDateRangeFilter(admin.SimpleListFilter):
 @admin.register(RoomOrder)
 class RoomOrderAdmin(admin.ModelAdmin):
     inlines = [RoomOrderItemInline]
-    list_display = ('room_number', 'category', 'check_in', 'check_out', 'is_active', 'status', 'payment_method', 'analytics_link')
-    search_fields = ('room_number',)
-    list_filter = ('is_active', 'category', 'status', 'payment_method')
+    list_display = (
+        'room_number', 'category', 'check_in', 'check_out', 'get_total_bill', 'payment_method', 'is_active',
+        'customer_name',  # Added customer_name to list_display
+    )
+    list_filter = ('category', 'is_active', 'payment_method', 'check_in', 'check_out',)
+    search_fields = ('room_number__room_number', 'customer_name') # Assuming room_number is a CharField or similar, adjust if needed
     list_per_page = 10
     fieldsets = (
         (None, {
@@ -69,7 +72,7 @@ class RoomOrderAdmin(admin.ModelAdmin):
     readonly_fields = ('bill_payments_section',)
 
     def get_total_bill(self, obj):
-        return f"₹{obj.get_total_bill():.2f}"
+        return f"Rs {obj.get_total_bill():.2f}"
     get_total_bill.short_description = "Total Bill"
 
     def bill_payments_section(self, obj):
@@ -117,8 +120,8 @@ class RoomOrderAdmin(admin.ModelAdmin):
                         <tr>
                             <td style="text-align:left;padding:10px 12px;border-bottom:1px solid #dee2e6;">{}</td>
                             <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #dee2e6;">{}</td>
-                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">₹{}</td>
-                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">₹{}</td>
+                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">Rs {}</td>
+                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">Rs {}</td>
                         </tr>
                         """,
                         item.food.name if item.food else "N/A",
@@ -142,9 +145,15 @@ class RoomOrderAdmin(admin.ModelAdmin):
             # Get the static URL for the logo
             logo_url = staticfiles_storage.url('images/qr.png')
 
-            # Construct the full HTML template with simple placeholders
+            # Construct the full HTML template with simple placeholders and added style block
             full_html_template = """
-                <div id="bill-section" style="max-width:600px;margin:20px auto;padding:30px;border:1px solid #e0e0e0;border-radius:10px;font-family:Arial, sans-serif;background-color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                <style>
+                    /* Attempt to make the jazzmin content area wider */
+                    #jazzmin-content {{ max-width: none !important; width: 100% !important; }}\n
+                    /* Ensure the form row for bill_payments_section also uses full width */
+                    .form-row.field-bill_payments_section {{ max-width: none !important; width: 100% !important; }}\n
+                </style>
+                <div id="bill-section" style="width:180%;margin:20px -200px;padding:30px;border:1px solid #e0e0e0;border-radius:10px;font-family:Arial, sans-serif;background-color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #f0f0f0;">
                         <div style="text-align:left;">
                              <img src="{}" alt="Company Logo" style="max-height: 80px; margin-bottom: 10px;">
@@ -171,11 +180,11 @@ class RoomOrderAdmin(admin.ModelAdmin):
                         <div style="display:flex;justify-content:flex-end;">
                             <div style="width:200px; margin-bottom: 10px;">
                                 <p style="margin:5px 0;"><strong>Days Stayed:</strong> <span style="float:right;">{}</span></p>
-                                <p style="margin:5px 0;"><strong>Room Charge:</strong> <span style="float:right;">₹{}</span></p>
-                                <p style="margin:5px 0;"><strong>Total Item Cost:</strong> <span style="float:right;">₹{}</span></p>
+                                <p style="margin:5px 0;"><strong>Room Charge:</strong> <span style="float:right;">Rs {}</span></p>
+                                <p style="margin:5px 0;"><strong>Total Item Cost:</strong> <span style="float:right;">Rs {}</span></p>
                             </div>
                         </div>
-                        <p style="display: flex; justify-content: space-between; margin:15px 0 5px 0;font-size:1.4em;font-weight:bold;color:#28a745;border-top:1px solid #eee;padding-top:10px;"><span style="white-space: nowrap;">Grand Total:</span> <span>₹{}</span></p>
+                        <p style="display: flex; justify-content: space-between; margin:15px 0 5px 0;font-size:1.4em;font-weight:bold;color:#28a745;border-top:1px solid #eee;padding-top:10px;"><span style="white-space: nowrap;">Grand Total:</span> <span>Rs {}</span></p>
                     </div>
 
                     <div style="text-align:center;padding-top:20px;border-top:1px solid #eee;margin-top:20px;">
@@ -211,7 +220,7 @@ class RoomOrderAdmin(admin.ModelAdmin):
             )
         except Exception as e:
             return f"Error calculating bill: {e}"
-    bill_payments_section.short_description = "Bill Payments"
+    bill_payments_section.short_description = ""
 
     def analytics_link(self, obj):
         return format_html(f'<a href="/admin/restaurant/roomorder/analytics/">View Analytics</a>')
@@ -221,8 +230,8 @@ class RoomOrderAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path('analytics/', self.admin_site.admin_view(analytics_view), name='roomorder_analytics'),
-            path('analytics/pdf/<str:from_date>/<str:to_date>/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf_all'),
-            path('analytics/pdf/<str:from_date>/<str:to_date>/<str:payment_method>/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf'),
+            path('analytics/pdf/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf_all'),
+            path('analytics/pdf/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf'),
         ]
         return custom_urls + urls
 

@@ -1,104 +1,153 @@
 {% extends 'admin/base_site.html' %}
+{% load i18n admin_urls static jazzmin %}
 
 {% block content %}
-<div id="content-main">
-    <h1>Sales Analytics (Bill to Company)</h1>
+<div id="content-main" style="padding: 20px; width: 100%;">
+    
+    <style>
+        /* Styles for alternating table rows */
+        #sales-report-table tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
 
-    <form method="post">
+        /* Styles for print view */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            /* Optionally adjust layout for printing */
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            #content-main {
+                padding: 0 !important;
+                margin-top: 0 !important;
+            }
+
+            /* Ensure tables print correctly */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+
+            th, td {
+                border: 1px solid #ddd !important;
+                padding: 8px !important;
+            }
+
+            /* Hide footer and branding elements - Added more selectors */
+            #footer, .footer, .jazzmin-version, .copyright, footer, [class*="footer"], [id*="footer"], .sidebar-footer {
+                display: none !important;
+            }
+        }
+    </style>
+
+    {# Show the form only if orders are NOT present #}
+    <div class="no-print">
+    {% if not orders %}
+    <form method="post" style="margin-bottom: 30px; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
         {% csrf_token %}
-        <label for="from_date">From Date:</label>
-        <input type="date" id="from_date" name="from_date" value="{{ from_date|default:'' }}">
-        
-        <label for="to_date">To Date:</label>
-        <input type="date" id="to_date" name="to_date" value="{{ to_date|default:'' }}">
-
-        <label for="payment_method">Payment Method:</label>
-        <select id="payment_method" name="payment_method">
+        <div style="display: flex; flex-wrap: wrap; gap: 25px; align-items: flex-end;">
+            <div>
+                <label for="from_date" style="display: block; margin-bottom: 6px; font-weight: bold;">From Date:</label>
+                <input type="date" id="from_date" name="from_date" value="{{ from_date|default:'' }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="to_date" style="display: block; margin-bottom: 6px; font-weight: bold;">To Date:</label>
+                <input type="date" id="to_date" name="to_date" value="{{ to_date|default:'' }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="payment_method" style="display: block; margin-bottom: 6px; font-weight: bold;">Payment Method:</label>
+                <select id="payment_method" name="payment_method" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
             <option value="">All</option>
             {% for choice in payment_method_choices %}
                 <option value="{{ choice.0 }}" {% if payment_method == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
             {% endfor %}
         </select>
-
-        <button type="submit">Generate Report</button>
-    </form>
-
-    {% if orders %}
-        <h2>Sales Report ({{ from_date }} to {{ to_date }})</h2>
-        
-        <table style="width:100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ddd; font-family: Arial, sans-serif;">
-            <thead>
-                <tr style="background-color: #417690; color: white;">
-                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Room No.</th>
-                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Customer Name</th>
-                    <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Amount</th>
-                    <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in orders %}
-                    <tr style="{% if forloop.counter is odd %}background-color: #f9f9f9;{% endif %}">
-                        <td style="border: 1px solid #ddd; padding: 10px; text-align: left;">{{ order.room_number }}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px; text-align: left;">{{ order.customer_name|default:"N/A" }}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₹{{ order.get_total_bill|floatformat:2 }}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">{{ order.check_in|date:"Y-m-d" }}</td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="4" style="border: 1px solid #ddd; padding: 10px; text-align: center; font-style: italic;">No orders found for the selected date range and payment method.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div style="margin-top: 20px; text-align: right; font-size: 1.2em; font-weight: bold; padding-top: 10px; border-top: 2px solid #417690;">
-            Total Revenue: ₹{{ total_revenue|floatformat:2 }}
+            </div>
+            <button type="submit" style="padding: 10px 20px; background-color: #417690; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">Generate Report</button>
         </div>
+    </form>
+    {% endif %}
+    </div>
 
-        <div style="margin-top: 20px;">
-            <button type="button" onclick="printReport()" style="margin-right: 10px;">Print Report</button>
+    {# Show header and report only if orders are present #}
+    {% if orders %}
+    {# --- Sales Analytics Header (Mimicking Bill Header) --- #}
+    <div style="margin:0 auto 30px auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px;font-family:Arial, sans-serif;background-color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid #f0f0f0;">
+            <div style="text-align:left;">
+                {# Ensure you have a static file at 'images/qr.png' for the logo #}
+                <img src="{% static 'images/qr.png' %}" alt="Company Logo" style="max-height: 70px;">
+            </div>
+            <div style="text-align:right;">
+                <h2 style="margin:0;color:#555;font-size:1.5em;">Bhanjyang Village and Lodge</h2>
+                <p style="margin:5px 0 0 0;color:#777;font-size:1em;">Sarankot, Pokhara</p>
+                <p style="margin:2px 0 0 0;color:#777;font-size:1em;">Contact No: +977-9846852692</p>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:15px;">
+            <h3 style="margin:0;color:#555;font-size:1.3em;">Sales Report {% if from_date and to_date %}( {{ from_date }} to {{ to_date }} ){% endif %}</h3>
             {% if payment_method %}
-                <a href="{% url 'admin:restaurant_generate_sales_report_pdf' from_date=from_date to_date=to_date payment_method=payment_method %}" class="button" style="text-decoration: none; padding: 8px 16px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
-            {% else %}
-                <a href="{% url 'admin:restaurant_generate_sales_report_pdf_all' from_date=from_date to_date=to_date %}" class="button" style="text-decoration: none; padding: 8px 16px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
+                <p style="margin:5px 0 0 0;color:#777;font-size:1em;">Payment Method: {{ payment_method }}</p>
             {% endif %}
         </div>
+    </div>
 
-    {% elif request.method == 'POST' %}
-        <p>No orders found for the selected date range and payment method.</p>
+    <h1 class="no-print">Sales Analytics</h1>
+
+    <div style="margin-top: 25px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <table id="sales-report-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 15px; text-align: left; border-bottom: 1px solid #ddd;">Room No.</th>
+                    <th style="padding: 15px; text-align: left; border-bottom: 1px solid #ddd;">Customer Name</th>
+                    <th style="padding: 15px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+                    <th style="padding: 15px; text-align: center; border-bottom: 1px solid #ddd;">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                {% for order in orders %}
+                <tr> {# Style moved to CSS block #}
+                    <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.room_number }}</td>
+                    <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.customer_name }}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #ddd;">Rs {{ order.get_total_bill|floatformat:2 }}</td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">{{ order.check_in|date:"Y-m-d" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                    <td colspan="4" style="padding: 15px; text-align: center;">No sales records found for the selected criteria.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+    </div>
+
+    {% if total_revenue is not None %}
+    <div style="margin-top: 25px; padding: 20px; text-align: right; font-size: 1.3em; font-weight: bold; border-top: 2px solid #417690;">
+        Total Revenue: Rs {{ total_revenue|floatformat:2 }}
+            </div>
+    {% endif %}
+
+    <div class="no-print" style="margin-top: 25px;">
+        <button type="button" onclick="printReport()" style="margin-right: 15px; padding: 10px 20px;">Print Report</button>
+        {# Modified PDF download links to use query parameters #}
+        {% if payment_method %}
+            <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}&payment_method={{ payment_method }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
+        {% else %}
+            <a href="{% url 'admin:restaurant_generate_sales_report_pdf_all' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
     {% endif %}
 </div>
+    {% endif %}
 
 <script>
 function printReport() {
-    var printContents = document.getElementById('content-main').innerHTML;
-    var originalContents = document.body.innerHTML;
-
-    // Create a new window or iframe to hold the printable content
-    var printWindow = window.open('', '_blank');
-    printWindow.document.open();
-    printWindow.document.write('<html><head><title>Sales Report</title>');
-    
-    // Optional: Copy some basic styles for better printing
-    printWindow.document.write('<style>');
-    printWindow.document.write('body { font-family: Arial, sans-serif; }');
-    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
-    printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
-    printWindow.document.write('th { background-color: #f2f2f2; }');
-    printWindow.document.write('.bill-container { margin-bottom: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }');
-    printWindow.document.write('</style>');
-
-    printWindow.document.write('</head><body>');
-    printWindow.document.write(printContents);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
-
-    // Wait for content to load before printing
-    printWindow.onload = function() {
-        printWindow.print();
-        printWindow.close();
-    };
+            window.print();
 }
 </script>
 
+</div>
 {% endblock %} 

@@ -23,7 +23,7 @@ from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
@@ -470,87 +470,186 @@ def room_access(request, token):
 
 @user_passes_test(lambda u: u.is_staff)
 def analytics_view(request):
+    from_date_str = request.POST.get('from_date')
+    to_date_str = request.POST.get('to_date')
+    payment_method = request.POST.get('payment_method', '') # Default to '' for 'All'
+
     orders = None
-    from_date = request.POST.get('from_date')
-    to_date = request.POST.get('to_date')
-    payment_method = request.POST.get('payment_method')
+    total_revenue = 0
+
+    payment_method_choices = [
+        ('Cash', 'Cash'),
+        ('Card', 'Card'),
+        ('Mobile', 'Mobile'),
+        ('Online', 'Online'),
+        # Add other payment methods as needed
+    ]
 
     if request.method == 'POST':
-        if from_date and to_date:
-            try:
-                from_datetime = datetime.strptime(from_date, '%Y-%m-%d')
-                to_datetime = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
-                orders = RoomOrder.objects.filter(
-                    check_in__gte=from_datetime,
-                    check_in__lt=to_datetime
-                )
+        # (Date parsing and filtering logic)
+        try:
+            if from_date_str:
+                from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
+            else:
+                from_date = None
 
-                if payment_method:
-                    orders = orders.filter(payment_method=payment_method)
+            if to_date_str:
+                to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
+            else:
+                to_date = None
 
-                # Calculate total revenue
-                total_revenue = sum(order.get_total_bill() for order in orders) if orders else 0
+            # Start with all RoomOrder objects
+            queryset = RoomOrder.objects.all()
 
-            except ValueError:
-                # Handle invalid date format
-                pass # Or add an error message
+            # Filter by date range if dates are provided
+            if from_date:
+                queryset = queryset.filter(check_in__date__gte=from_date)
+            if to_date:
+                # Add one day to the to_date so that the filter is inclusive of the selected end date
+                queryset = queryset.filter(check_in__date__lte=to_date)
+
+            # Filter by payment method if a specific one is selected
+            if payment_method:
+                queryset = queryset.filter(payment_method=payment_method)
+
+            orders = queryset
+
+            # Calculate total revenue
+            total_revenue = sum(order.get_total_bill() for order in orders)
+
+        except ValueError:
+            # Handle invalid date format
+            orders = [] # Or None, depending on desired behavior
+            total_revenue = 0
+            # Optionally, add an error message
+            # messages.error(request, "Invalid date format.")
+
 
     context = {
-        'orders': orders,
-        'from_date': from_date,
-        'to_date': to_date,
+        'from_date': from_date_str,
+        'to_date': to_date_str,
         'payment_method': payment_method,
-        'payment_method_choices': RoomOrder.PAYMENT_METHOD_CHOICES,
-        'total_revenue': total_revenue if 'total_revenue' in locals() else 0, # Pass total revenue to template
+        'payment_method_choices': payment_method_choices,
+        'orders': orders,
+        'total_revenue': total_revenue,
+        'request_path': request.path, # Add the request path to context
     }
-    return render(request, 'admin/restaurant/roomorder/analytics.html', context)   
+
+    return render(request, 'admin/restaurant/roomorder/analytics.html', context)
 
 @user_passes_test(lambda u: u.is_staff)
 def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_method=None):
     # Create the HttpResponse object with PDF headers
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="sales_report_{datetime.now().strftime("%Y%m%d")}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="sales_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"' # Added timestamp for unique filenames
 
     # Create the PDF object
     doc = SimpleDocTemplate(response, pagesize=letter)
     styles = getSampleStyleSheet()
     elements = []
 
-    # Add title
+    # Retrieve date and payment method from GET parameters
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    payment_method = request.GET.get('payment_method', None)
+
+    # --- Add Lodge Header Information ---
+    from reportlab.lib.utils import ImageReader
+    from django.conf import settings
+    import os
+
+    # Construct the absolute path to the logo
+    logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'images', 'qr.png')
+
+    # Check if logo file exists before adding
+    if os.path.exists(logo_path):
+        try:
+            # Adjust width as needed, height will scale proportionally
+            logo = Image(logo_path, width=1.2*inch, height=1.2*inch)
+        except Exception as e:
+             # Handle cases where ImageReader might fail
+             logo = Paragraph(f"[Logo Error: {e}]", styles['Normal'])
+    else:
+        logo = Paragraph("[Logo not found]", styles['Normal'])
+
+    # Lodge Information Paragraphs
+    # Create a specific style for lodge info with reduced spacing and right alignment
+    lodge_info_style = ParagraphStyle(
+        'LodgeInfoStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=5, # Increased space after each line
+        alignment=2, # Right alignment
+    )
+
+    lodge_name = Paragraph("<font size=16><b>Bhanjyang Village and Lodge</b></font>", lodge_info_style) # Increased font size
+    # Add extra space after this paragraph
+    lodge_name.spaceAfter = 10 # You can adjust this value as needed
+    lodge_address = Paragraph("<font size=10>Sarankot, Pokhara</font>", lodge_info_style) # Use new style
+    lodge_contact = Paragraph("<font size=10>Contact No: +977-9846852692</font>", lodge_info_style) # Use new style
+
+    # Create a table for the header to align logo and info
+    header_data = [[logo, [lodge_name, lodge_address, lodge_contact]]]
+    # Adjusted column widths slightly to give more space to text if needed
+    header_table = Table(header_data, colWidths=[1.5*inch, doc.width - 1.5*inch])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (0, 0), 'TOP'), # Align logo to top
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'), # Align info to RIGHT
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 0.5*inch)) # Increased space after header
+    # --- End Lodge Header Information ---
+
+    # Add main title
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=20,
-        spaceAfter=15,
-        alignment=1
+        fontSize=18, # Slightly smaller for better integration with header
+        spaceAfter=14,
+        alignment=1 # Center align
     )
     elements.append(Paragraph("Sales Report", title_style))
 
-    # Add date range
+    # Add date range and payment method
     date_style = ParagraphStyle(
         'DateStyle',
         parent=styles['Normal'],
         fontSize=10,
-        spaceAfter=20,
+        spaceAfter=15,
         alignment=1
     )
-    date_text = f"Period: {from_date} to {to_date}"
+    # Display the actual dates if available, otherwise show 'None'
+    display_from_date = from_date_str if from_date_str else 'None'
+    display_to_date = to_date_str if to_date_str else 'None'
+    date_text = f"Period: {display_from_date} to {display_to_date}"
     if payment_method:
         date_text += f" (Payment Method: {dict(RoomOrder.PAYMENT_METHOD_CHOICES).get(payment_method, payment_method)})"
     elements.append(Paragraph(date_text, date_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 0.2*inch))
 
     # Get orders data and build report elements
     try:
-        from_datetime = datetime.strptime(from_date, '%Y-%m-%d')
-        to_datetime = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
-        orders = RoomOrder.objects.filter(
-            check_in__gte=from_datetime,
-            check_in__lt=to_datetime
-        ).order_by('check_in') # Order by check-in date
+        # Parse date strings only if they exist
+        from_datetime = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else None
+        # Add one day to the to_date so that the filter is inclusive of the selected end date, only if to_date_str exists
+        # Need to handle None for to_date_str before adding timedelta
+        to_datetime = datetime.strptime(to_date_str, '%Y-%m-%d') + timedelta(days=1) if to_date_str else None
 
+        # Start with all RoomOrder objects
+        queryset = RoomOrder.objects.all()
+
+        # Filter by date range if dates are provided
+        if from_datetime:
+            queryset = queryset.filter(check_in__date__gte=from_datetime.date()) # Filter by date part only
+        if to_datetime:
+             # Filter by date part only for check_in less than the day AFTER to_date
+             queryset = queryset.filter(check_in__date__lt=to_datetime.date()) 
+
+        # Filter by payment method if a specific one is selected
         if payment_method:
-            orders = orders.filter(payment_method=payment_method)
+            queryset = queryset.filter(payment_method=payment_method)
+
+        orders = queryset.order_by('check_in') # Order by check-in date
 
         if orders:
             # Create table data for the main report table
@@ -558,49 +657,60 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
             
             for order in orders:
                 data.append([
-                    str(order.room_number),
+                    str(order.room_number) if order.room_number else 'N/A',
                     order.customer_name or 'N/A',
-                    f"₹{order.get_total_bill():.2f}",
+                    f"Rs {order.get_total_bill():.2f}",
                     order.check_in.strftime('%Y-%m-%d') if order.check_in else 'N/A', # Using check-in date as the order date
                 ])
 
             # Create the main report table
-            col_widths = [doc.width/6, doc.width/3, doc.width/6, doc.width/6]
+            # Adjusted column widths for better spacing
+            col_widths = [doc.width*0.15, doc.width*0.4, doc.width*0.2, doc.width*0.25]
             table = Table(data, colWidths=col_widths)
 
-            # Style for the main report table
+            # Style for the main report table - Enhanced Styling
             table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.ReportLabGreen), # Professional header color
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#417690')), # Django Admin Blue Header
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 12),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige), # Light background for rows
-                ('GRID', (0, 0), (-1, -1), 1, colors.black), # Add grid lines
-                ('BOX', (0, 0), (-1, -1), 1, colors.black), # Add border around table
+                ('FONTSIZE', (0, 0), (-1, 0), 10), # Slightly smaller font for table
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white), # White background for rows
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#ddd')), # Light grey grid lines
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#ddd')), # Light grey border around table
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (2, 1), (2, -1), 'RIGHT'), # Right align Amount
                 ('ALIGN', (0, 1), (0, -1), 'LEFT'), # Left align Room No.
                 ('ALIGN', (1, 1), (1, -1), 'LEFT'), # Left align Customer Name
+                ('ALIGN', (2, 1), (2, -1), 'RIGHT'), # Right align Amount
                 ('ALIGN', (3, 1), (3, -1), 'CENTER'), # Center align Date
+                ('FONTSIZE', (0, 1), (-1, -1), 9), # Font size for table data
+                ('LEFTPADDING', (0, 1), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 1), (-1, -1), 6),
+                ('TOPPADDING', (0, 1), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+
             ]))
 
             elements.append(table)
 
-            # Add overall summary (Total Revenue)
+            # Add overall summary (Total Revenue) - Enhanced Styling
             total_revenue = sum(order.get_total_bill() for order in orders)
             
             # Summary style for Total Revenue
             total_revenue_style = ParagraphStyle(
                 'TotalRevenueStyle',
-                parent=styles['Heading2'], # Use a slightly larger style for summary
-                spaceBefore=20,
-                alignment=2 # Right align summary
+                parent=styles['Heading2'], 
+                spaceBefore=15,
+                alignment=2, # Right align summary
+                fontSize=12,
+                fontName='Helvetica-Bold',
+                textColor=colors.HexColor('#333') # Dark grey color
+
             )
             
-            elements.append(Spacer(1, 10))
-            elements.append(Paragraph(f"Total Revenue: ₹{total_revenue:.2f}", total_revenue_style))
+            elements.append(Spacer(1, 0.1*inch))
+            elements.append(Paragraph(f"Total Revenue: Rs {total_revenue:.2f}", total_revenue_style))
 
         else:
             elements.append(Paragraph("No orders found for the selected date range and payment method.", styles['Normal']))
