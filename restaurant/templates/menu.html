@@ -2037,7 +2037,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         cartList.querySelectorAll('.cart-remove-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
             const id = this.getAttribute('data-id');
             // Ensure item exists before removing
             if (window.cart[id]) {

@@ -356,7 +356,7 @@
       <img src="{{ room.image.url }}" alt="{{ room.name }}" />
       <div class="ri-text">
         <h4>{{ room.name }}</h4>
-        <h3 class="room-price">{{ room.price }}<span>/Per Night</span></h3>
+        <h3 class="room-price">Rs {{ room.category.price_per_night }}<span>/Per Night</span></h3>
         <div class="room-features">
           <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> {{ room.size }}</div>
           <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> {{ room.capacity }}</div>
