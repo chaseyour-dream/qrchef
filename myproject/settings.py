@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-v)s7wmc3)za=5+q0f*weh%=$2do_ri1(*wv3xa5$8w_3e3)gr&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.15.68','192.168.110.49']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.15.69', '192.168.110.49', '192.168.110.79','192.168.110.170','192.168.110.164']
 
 
 INSTALLED_APPS = [
@@ -108,6 +108,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Custom authentication backend
+AUTHENTICATION_BACKENDS = [
+    'myproject.auth_backend.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -155,7 +161,14 @@ JAZZMIN_SETTINGS = {
         "restaurant.order": "fas fa-receipt",
         "restaurant.websitevisit": "fas fa-globe",
         "auth.user": "fas fa-user",
-    "auth.group": "fas fa-users",
+        "auth.group": "fas fa-users",
+    },
+    "custom_links": {
+        "restaurant": [{
+            "name": "Sales Analytics",
+            "url": "/admin/restaurant/roomorder/analytics/",
+            "icon": "fas fa-chart-line"
+        }]
     },
 }
 

@@ -9,7 +9,7 @@ body.jazzmin-login {
   background: #fff;
   padding: 3.2rem 2.2rem 2.2rem 2.2rem;
   border-radius: 2.3rem;
-  box-shadow: 0 14px 52px 0 rgba(230,57,70,0.18), 0 2px 18px rgba(0,0,0,0.08);
+  box-shadow: 0 6px 32px 0 #ff880088, 0 2px 18px rgba(0,0,0,0.08), 0 0 0 8px #ffd58022;
   border: none;
   display: flex;
   flex-direction: column;
@@ -20,25 +20,26 @@ body.jazzmin-login {
 }
 
 .jazzmin-login .brand-image {
-  width: 92px;
-  height: 92px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
-  margin-bottom: 1.5rem;
-  margin-top: -1.2rem;
+  margin-bottom: 1.2rem;
+  margin-top: -0.8rem;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 2px 22px rgba(230,57,70,0.14);
+  box-shadow: 0 2px 12px rgba(230,57,70,0.10);
   border: 2px solid #fff;
 }
 
 .jazzmin-login .login-logo, .jazzmin-login .login-box-msg {
-  color: #e63946;
-  font-size: 2.55rem;
+  color: #ff8800;
+  font-size: 2.1rem;
   margin-bottom: 2.2rem;
   text-align: center;
-  font-weight: bold;
+  font-weight: 900;
   font-family: 'Segoe UI', Arial, sans-serif;
   letter-spacing: 1px;
+  text-shadow: 1px 2px 8px #ffd580, 0 1px 0 #ff8800, 0 2px 8px #e63946;
 }
 
 .jazzmin-login .form-group {
@@ -72,22 +73,22 @@ body.jazzmin-login {
 }
 
 .jazzmin-login .btn-primary {
-  background: #e63946;
+  background: linear-gradient(90deg, #ff8800 70%, #ffb347 100%);
   border: none;
   border-radius: 2.2rem;
   font-size: 1.25rem;
   padding: 16px 0;
   font-weight: 700;
   color: #fff;
-  box-shadow: 0 6px 24px rgba(230,57,70,0.13);
+  box-shadow: 0 6px 24px #ff880088;
   letter-spacing: 0.5px;
   margin-top: 0.7rem;
   margin-bottom: 0.3rem;
   transition: background 0.2s, box-shadow 0.2s;
 }
 .jazzmin-login .btn-primary:hover {
-  background: #d62839;
-  box-shadow: 0 8px 28px rgba(230,57,70,0.18);
+  background: linear-gradient(90deg, #ff8800 60%, #e63946 100%);
+  box-shadow: 0 8px 28px #ff880099;
 }
 
 .jazzmin-login .login-box form {

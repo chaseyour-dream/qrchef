@@ -125,7 +125,7 @@
     fetch('/api/website-visits/')
     .then(response => response.json())
     .then(data => {
-      animateValue("stat-visits", 0, data.visits, 1500);
+      animateValue("stat-visits", 0, Math.abs(data.visits), 1500);
     });
 </script>
 {% endblock %}

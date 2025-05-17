@@ -1,38 +1,30 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, FoodItem, Order, OrderItem, WebsiteVisit, Profile, DashboardStats, Room
+from .models import Category, Food, WebsiteVisit, Profile, DashboardStats, Room, RoomCategory, RoomOrder, RoomOrderItem, Cart, CartItem
 from django.contrib import messages
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.urls import path
+from .views import analytics_view, generate_sales_report_pdf
 
-# Customizing FoodItem admin view
-class FoodItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'image_url')
-    search_fields = ('name',)
+# Customizing Food admin view
+class FoodAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'price', 'display_image')
+    list_filter = ('category',)
+    search_fields = ('name', 'category__name')
 
-    def image_url(self, obj):
+    def display_image(self, obj):
         if obj.image:
-            return obj.image.url
-        return "No image"
-    image_url.short_description = 'Image URL'
+            return format_html('<img src="{}" width="50" height="50" />', obj.image.url)
+        return "No Image"
+    display_image.short_description = 'Image'
 
-# Customizing CartItem admin view
-class CartItemAdmin(admin.ModelAdmin):
-    list_display = ('food_item', 'quantity', 'order_room_number')
-    list_filter = ('order__room_number',)
-
-    def order_room_number(self, obj):
-        return obj.order.room_number
-    order_room_number.short_description = 'Room Number'
-
-# Customizing Order admin view
-class OrderItemInline(admin.TabularInline):
-    model = OrderItem
+class RoomOrderItemInline(admin.TabularInline):
+    model = RoomOrderItem
     extra = 0
-    fields = ('food_item', 'price', 'quantity')
-
-# Customizing Order admin view
-
+    fields = ('food', 'quantity', 'price', 'status')
+    readonly_fields = ('price',)
 
 class OrderDateRangeFilter(admin.SimpleListFilter):
     title = 'Order Date Range'
@@ -49,62 +41,234 @@ class OrderDateRangeFilter(admin.SimpleListFilter):
         now = timezone.now()
         if self.value() == 'today':
             since = now - timedelta(days=1)
-            return queryset.filter(created_at__gte=since)
+            return queryset.filter(check_in__gte=since)
         elif self.value() == 'week':
             since = now - timedelta(days=7)
-            return queryset.filter(created_at__gte=since)
+            return queryset.filter(check_in__gte=since)
         elif self.value() == 'month':
             since = now - timedelta(days=30)
-            return queryset.filter(created_at__gte=since)
+            return queryset.filter(check_in__gte=since)
         return queryset
 
+@admin.register(RoomOrder)
+class RoomOrderAdmin(admin.ModelAdmin):
+    inlines = [RoomOrderItemInline]
+    list_display = ('room_number', 'category', 'check_in', 'check_out', 'is_active', 'status', 'payment_method', 'analytics_link')
+    search_fields = ('room_number',)
+    list_filter = ('is_active', 'category', 'status', 'payment_method')
+    list_per_page = 10
+    fieldsets = (
+        (None, {
+            'fields': ('room_number', 'customer_name', 'category', 'check_in', 'check_out', 'is_active', 'is_paid', 'status', 'payment_method'),
+        }),
+        ('Bill Information', {
+            'fields': ('bill_payments_section',),
+            'classes': ('collapse',),
+        }),
+    )
+    readonly_fields = ('bill_payments_section',)
 
+    def get_total_bill(self, obj):
+        return f"₹{obj.get_total_bill():.2f}"
+    get_total_bill.short_description = "Total Bill"
 
-class OrderAdmin(admin.ModelAdmin):
-    list_display = ('room_number', 'created_at', 'total_price', 'status', 'payment_method', 'payment_status', 'order_details')
-    inlines = [OrderItemInline]
-    list_per_page = 20  # Show 20 orders per page
-    list_filter = (OrderDateRangeFilter, 'room_number', 'status')
-    actions = ['delete_all_orders']
+    def bill_payments_section(self, obj):
+        if not obj or not obj.pk:
+            return "Save and add items to see the bill."
 
-    def delete_all_orders(self, request, queryset):
-        from .models import Order
-        count = Order.objects.count()
-        Order.objects.all().delete()
-        self.message_user(request, f"Deleted all {count} orders.", messages.SUCCESS)
-    delete_all_orders.short_description = "Delete ALL orders (careful!)"
+        try:
+            # Ensure calculations result in floats
+            days_stayed = int(obj.get_days_stayed())
+            room_charge_float = float(obj.get_room_charge())
+            total_cost_of_orders_float = float(obj.get_total_cost_of_orders())
+            grand_total_float = float(obj.get_grand_total())
+            paid = obj.is_paid
+            from django.utils.safestring import mark_safe
+            status_html_content = (
+                '<span style="background:#d4edda;color:#155724;padding:3px 12px;border-radius:12px;font-weight:bold;border:1px solid #c3e6cb;">Paid</span>'
+                if paid else
+                '<span style="background:#f8d7da;color:#721c24;padding:3px 12px;border-radius:12px;font-weight:bold;border:1px solid #f5c6cb;">Unpaid</span>'
+            )
 
-    def order_details(self, obj):
-        details = [f"{item.food_item.name} (x{item.quantity})" for item in obj.orderitem_set.all()]
-        return ", ".join(details)
-    order_details.short_description = 'Order Details'
+            # Format check_out date if available
+            bill_date = obj.check_out.strftime('%Y-%m-%d %H:%M') if obj.check_out else "N/A"
 
-# Customizing Category admin view
+            # Build the ordered items table HTML
+            items_table_html = """
+            <table style="width:100%;border-collapse:collapse;margin-top:20px;">
+                <thead>
+                    <tr style="background-color:#f8f9fa;">
+                        <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #dee2e6;">Item</th>
+                        <th style="text-align:center;padding:10px 12px;border-bottom:1px solid #dee2e6;">Quantity</th>
+                        <th style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">Rate</th>
+                        <th style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+
+            if hasattr(obj, 'roomorderitem_set') and obj.roomorderitem_set.exists():
+                for item in obj.roomorderitem_set.all():
+                    # Ensure item.price is treated as a float for calculation and format it
+                    item_price_float = float(item.price)
+                    item_subtotal = item.quantity * item_price_float
+                    items_table_html += format_html(
+                        """
+                        <tr>
+                            <td style="text-align:left;padding:10px 12px;border-bottom:1px solid #dee2e6;">{}</td>
+                            <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #dee2e6;">{}</td>
+                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">₹{}</td>
+                            <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #dee2e6;">₹{}</td>
+                        </tr>
+                        """,
+                        item.food.name if item.food else "N/A",
+                        item.quantity,
+                        f"{item_price_float:.2f}", # Format to string here
+                        f"{item_subtotal:.2f}" # Format to string here
+                    )
+            else:
+                 items_table_html += '<tr><td colspan="4" style="text-align:center;padding:10px 12px;">No items ordered yet.</td></tr>'
+
+            items_table_html += """
+                </tbody>
+            </table>
+            """
+
+            # Format numeric values to strings before passing to format_html
+            room_charge_str = f"{room_charge_float:.2f}"
+            total_cost_of_orders_str = f"{total_cost_of_orders_float:.2f}"
+            grand_total_str = f"{grand_total_float:.2f}"
+
+            # Get the static URL for the logo
+            logo_url = staticfiles_storage.url('images/qr.png')
+
+            # Construct the full HTML template with simple placeholders
+            full_html_template = """
+                <div id="bill-section" style="max-width:600px;margin:20px auto;padding:30px;border:1px solid #e0e0e0;border-radius:10px;font-family:Arial, sans-serif;background-color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #f0f0f0;">
+                        <div style="text-align:left;">
+                             <img src="{}" alt="Company Logo" style="max-height: 80px; margin-bottom: 10px;">
+                            <p style="margin:5px 0 0 0;font-size:0.9em;color:#777;">Invoice No: <strong>{}</strong></p>
+                            <p style="margin:0;font-size:0.9em;color:#777;">Date: <strong>{}</strong></p>
+                        </div>
+                        <div style="text-align:right;">
+                            <h2 style="margin:0;color:#555;font-size:1.5em;">Bhanjyang Village and Lodge</h2>
+                            <p style="margin:5px 0 0 0;font-size:0.9em;color:#777;">Sarankot</p>
+                            <p style="margin:0;font-size:0.9em;color:#777;">Pokhara,Nepal</p>
+                            <p style="margin:0;font-size:0.9em;color:#777;">Phone: +977 974-5522082</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+                        <h4 style="margin-top:0;margin-bottom:10px;color:#555;border-bottom:1px dashed #eee;padding-bottom:5px;">Bill To:</h4>
+                        <p style="margin:5px 0;font-size:1.1em;"><strong>Room Number:</strong> {}</p>
+                        <p style="margin:5px 0;font-size:1.1em;"><strong>Customer Name:</strong> {}</p>
+                    </div>
+
+                    {}
+
+                    <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+                        <div style="display:flex;justify-content:flex-end;">
+                            <div style="width:200px; margin-bottom: 10px;">
+                                <p style="margin:5px 0;"><strong>Days Stayed:</strong> <span style="float:right;">{}</span></p>
+                                <p style="margin:5px 0;"><strong>Room Charge:</strong> <span style="float:right;">₹{}</span></p>
+                                <p style="margin:5px 0;"><strong>Total Item Cost:</strong> <span style="float:right;">₹{}</span></p>
+                            </div>
+                        </div>
+                        <p style="display: flex; justify-content: space-between; margin:15px 0 5px 0;font-size:1.4em;font-weight:bold;color:#28a745;border-top:1px solid #eee;padding-top:10px;"><span style="white-space: nowrap;">Grand Total:</span> <span>₹{}</span></p>
+                    </div>
+
+                    <div style="text-align:center;padding-top:20px;border-top:1px solid #eee;margin-top:20px;">
+                        <p style="margin:0;font-size:1.1em;"><strong>Payment Status:</strong> {}</p>
+                    </div>
+                </div>
+                <button type="button" onclick="printBillSection()" style="display:block;margin:20px auto;padding:12px 30px;background:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;font-size:1.1em;transition:background-color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Print Bill</button>
+                <script>
+                function printBillSection() {{
+                    var printContents = document.getElementById('bill-section').innerHTML;
+                    var originalContents = document.body.innerHTML;
+                    document.body.innerHTML = printContents;
+                    window.print();
+                    document.body.innerHTML = originalContents;
+                    location.reload();
+                }}
+                </script>
+                """
+
+            return format_html(
+                full_html_template,
+                logo_url,
+                obj.pk,
+                bill_date,
+                obj.room_number,
+                obj.customer_name if obj.customer_name else "N/A",
+                mark_safe(items_table_html),
+                days_stayed,
+                room_charge_str,
+                total_cost_of_orders_str,
+                grand_total_str,
+                mark_safe(status_html_content)
+            )
+        except Exception as e:
+            return f"Error calculating bill: {e}"
+    bill_payments_section.short_description = "Bill Payments"
+
+    def analytics_link(self, obj):
+        return format_html(f'<a href="/admin/restaurant/roomorder/analytics/">View Analytics</a>')
+    analytics_link.short_description = 'Analytics'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('analytics/', self.admin_site.admin_view(analytics_view), name='roomorder_analytics'),
+            path('analytics/pdf/<str:from_date>/<str:to_date>/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf_all'),
+            path('analytics/pdf/<str:from_date>/<str:to_date>/<str:payment_method>/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf'),
+        ]
+        return custom_urls + urls
+
+@admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name',)
+    search_fields = ('name',)
 
+@admin.register(RoomCategory)
+class RoomCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price_per_night', 'room_numbers')
+    search_fields = ('name',)
 
-# Register models with admin site
+@admin.register(Room)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'size', 'capacity', 'bed', 'services', 'display_image')
+    list_filter = ('category',)
+    search_fields = ('name', 'category__name')
+
+    def display_image(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50" height="50" />', obj.image.url)
+        return "No Image"
+    display_image.short_description = 'Image'
+
+@admin.register(WebsiteVisit)
 class WebsiteVisitAdmin(admin.ModelAdmin):
+    list_display = ('count',)
     readonly_fields = ('count',)
-
-admin.site.register(WebsiteVisit, WebsiteVisitAdmin)
-class DashboardStatsAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
-        # Allow add only if no instance exists
-        count = DashboardStats.objects.count()
-        return count == 0
-
+        return False
+    def has_change_permission(self, request, obj=None):
+        return False
     def has_delete_permission(self, request, obj=None):
-        # Prevent deletion
         return False
 
-admin.site.register(DashboardStats, DashboardStatsAdmin)
-admin.site.register(FoodItem, FoodItemAdmin)
-admin.site.register(Order, OrderAdmin)
-class RoomAdmin(admin.ModelAdmin):
-    list_display = ("name", "price", "size", "capacity", "bed", "services")
-    search_fields = ("name", "size", "capacity", "bed", "services")
+@admin.register(DashboardStats)
+class DashboardStatsAdmin(admin.ModelAdmin):
+    list_display = ('rooms', 'happy_guests', 'dishes_served', 'staff_members')
 
-admin.site.register(Room, RoomAdmin)
-admin.site.register(Category, CategoryAdmin)
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'display_photo')
+
+    def display_photo(self, obj):
+        if obj.photo:
+            return format_html('<img src="{}" width="50" height="50" />', obj.photo.url)
+        return "No Photo"
+    display_photo.short_description = 'Photo'

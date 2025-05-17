@@ -1,0 +1,104 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Sales Analytics (Bill to Company)</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        <label for="from_date">From Date:</label>
+        <input type="date" id="from_date" name="from_date" value="{{ from_date|default:'' }}">
+        
+        <label for="to_date">To Date:</label>
+        <input type="date" id="to_date" name="to_date" value="{{ to_date|default:'' }}">
+
+        <label for="payment_method">Payment Method:</label>
+        <select id="payment_method" name="payment_method">
+            <option value="">All</option>
+            {% for choice in payment_method_choices %}
+                <option value="{{ choice.0 }}" {% if payment_method == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Generate Report</button>
+    </form>
+
+    {% if orders %}
+        <h2>Sales Report ({{ from_date }} to {{ to_date }})</h2>
+        
+        <table style="width:100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ddd; font-family: Arial, sans-serif;">
+            <thead>
+                <tr style="background-color: #417690; color: white;">
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Room No.</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Customer Name</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Amount</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr style="{% if forloop.counter is odd %}background-color: #f9f9f9;{% endif %}">
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: left;">{{ order.room_number }}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: left;">{{ order.customer_name|default:"N/A" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₹{{ order.get_total_bill|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">{{ order.check_in|date:"Y-m-d" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 10px; text-align: center; font-style: italic;">No orders found for the selected date range and payment method.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; text-align: right; font-size: 1.2em; font-weight: bold; padding-top: 10px; border-top: 2px solid #417690;">
+            Total Revenue: ₹{{ total_revenue|floatformat:2 }}
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="button" onclick="printReport()" style="margin-right: 10px;">Print Report</button>
+            {% if payment_method %}
+                <a href="{% url 'admin:restaurant_generate_sales_report_pdf' from_date=from_date to_date=to_date payment_method=payment_method %}" class="button" style="text-decoration: none; padding: 8px 16px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
+            {% else %}
+                <a href="{% url 'admin:restaurant_generate_sales_report_pdf_all' from_date=from_date to_date=to_date %}" class="button" style="text-decoration: none; padding: 8px 16px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
+            {% endif %}
+        </div>
+
+    {% elif request.method == 'POST' %}
+        <p>No orders found for the selected date range and payment method.</p>
+    {% endif %}
+</div>
+
+<script>
+function printReport() {
+    var printContents = document.getElementById('content-main').innerHTML;
+    var originalContents = document.body.innerHTML;
+
+    // Create a new window or iframe to hold the printable content
+    var printWindow = window.open('', '_blank');
+    printWindow.document.open();
+    printWindow.document.write('<html><head><title>Sales Report</title>');
+    
+    // Optional: Copy some basic styles for better printing
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: Arial, sans-serif; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
+    printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #f2f2f2; }');
+    printWindow.document.write('.bill-container { margin-bottom: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }');
+    printWindow.document.write('</style>');
+
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(printContents);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+
+    // Wait for content to load before printing
+    printWindow.onload = function() {
+        printWindow.print();
+        printWindow.close();
+    };
+}
+</script>
+
+{% endblock %} 
