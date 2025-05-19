@@ -97,7 +97,7 @@
         </div>
     </div>
 
-    <h1 class="no-print">Sales Analytics</h1>
+    
 
     <div style="margin-top: 25px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
         <table id="sales-report-table" style="width: 100%; border-collapse: collapse;">
@@ -105,7 +105,6 @@
                 <tr style="background-color: #f2f2f2;">
                     <th style="padding: 15px; text-align: left; border-bottom: 1px solid #ddd;">Room No.</th>
                     <th style="padding: 15px; text-align: left; border-bottom: 1px solid #ddd;">Customer Name</th>
-                    <th style="padding: 15px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
                     <th style="padding: 15px; text-align: center; border-bottom: 1px solid #ddd;">Date</th>
                         </tr>
                     </thead>
@@ -114,12 +113,47 @@
                 <tr> {# Style moved to CSS block #}
                     <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.room_number }}</td>
                     <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.customer_name }}</td>
-                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #ddd;">Rs {{ order.get_total_bill|floatformat:2 }}</td>
                     <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">{{ order.check_in|date:"Y-m-d" }}</td>
                             </tr>
+
+                <tr>
+                    <td colspan="3" style="padding: 0;">
+                        <div style="margin: 10px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #fff;">
+                            <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 1em; color: #555;">Ordered Items:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                                <thead>
+                                    <tr style="background-color: #f9f9f9;">
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Item</th>
+                                        <th style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">Qty</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Price</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee;">{{ item.food.name }}</td>
+                                        <td style="padding: 6px 8px; text-align: center; border-bottom: 1px solid #eee;">{{ item.quantity }}</td>
+                                        <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">Rs {{ item.price|floatformat:2 }}</td>
+                                        <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">Rs {{ item.get_total_price|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" style="padding: 6px 8px; text-align: center;">No items for this order.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div style="text-align: right; font-weight: bold; font-size: 1em; color: #555;">
+                                Order Total: Rs {{ order.get_total_bill|floatformat:2 }}
+                            </div>
+                        </div>
+                    </td>
+                            </tr>
+
                         {% empty %}
                             <tr>
-                    <td colspan="4" style="padding: 15px; text-align: center;">No sales records found for the selected criteria.</td>
+                    <td colspan="3" style="padding: 15px; text-align: center;">No sales records found for the selected criteria.</td>
                             </tr>
                         {% endfor %}
                     </tbody>
