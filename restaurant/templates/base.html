@@ -7,6 +7,7 @@
     <title>{% block title %}QR Chef{% endblock %}</title>
     <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="{% static 'images/QRCHEF.png' %}">
     <style>
       /* Modern, clean, responsive footer */
@@ -524,7 +525,17 @@
         </li>
         <li>
           <a href="#" class="profile-photo-link" id="openProfileModal">
-            <img src="{% if user.profile.photo %}{{ user.profile.photo.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="Profile" class="profile-photo" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;">
+            {% if user.profile.photo %}
+              <img src="{{ user.profile.photo.url }}" alt="Profile" class="profile-photo" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;">
+            {% else %}
+              {% if user.profile.gender == 'Male' %}
+                <i class="fas fa-male" style="font-size:32px; width:32px; height:32px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+              {% elif user.profile.gender == 'Female' %}
+                <i class="fas fa-female" style="font-size:32px; width:32px; height:32px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+              {% else %}
+                <i class="fas fa-user" style="font-size:32px; width:32px; height:32px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+              {% endif %}
+            {% endif %}
           </a>
         </li>
       {% else %}
@@ -650,7 +661,17 @@
 <div id="profileModal" class="modal">
   <div class="modal-content">
     <span id="closeProfileModal">&times;</span>
-    <img src="{% if user.profile.photo %}{{ user.profile.photo.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="Profile Photo">
+    {% if user.profile.photo %}
+      <img src="{{ user.profile.photo.url }}" alt="Profile Photo" style="width:90px;height:90px;border-radius:50%;object-fit:cover;">
+    {% else %}
+      {% if user.profile.gender == 'Male' %}
+        <i class="fas fa-male" style="font-size:90px; width:90px; height:90px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+      {% elif user.profile.gender == 'Female' %}
+        <i class="fas fa-female" style="font-size:90px; width:90px; height:90px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+      {% else %}
+        <i class="fas fa-user" style="font-size:90px; width:90px; height:90px; border-radius:50%; background-color:#f1f5f9; color:#334155; display:flex; align-items:center; justify-content:center;"></i>
+      {% endif %}
+    {% endif %}
     <h2>{{ user.username }}</h2>
     <p>Email: <b>{{ user.email }}</b></p>
     <p>Member since: <b>{{ user.date_joined|date:'F d, Y' }}</b></p>
@@ -728,6 +749,7 @@
       </div>
 
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
     {% block extra_scripts %}{% endblock %}
   </body>

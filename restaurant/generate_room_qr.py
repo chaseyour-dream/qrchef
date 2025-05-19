@@ -1,10 +1,18 @@
+import os
+import django
+
+# Configure Django settings
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings') # Replace 'myproject.settings' with your project's settings module
+django.setup()
+
 import qrcode
 import jwt
 from datetime import datetime, timedelta
-import os
 
 # Secret key for JWT - must match Django's SECRET_KEY
-SECRET_KEY = 'django-insecure-v)s7wmc3)za=5+q0f*weh%=$2do_ri1(*wv3xa5$8w_3e3)gr&'
+from django.conf import settings
+
+SECRET_KEY = settings.SECRET_KEY
 
 def generate_room_token(room_number):
     # Create a JWT token with room number and expiration

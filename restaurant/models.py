@@ -4,6 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from decimal import Decimal
+from datetime import timedelta
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -227,6 +228,7 @@ class DashboardStats(models.Model):
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
+    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], null=True, blank=True)
 
     def __str__(self):
         return f"Profile of {self.user.username}"
@@ -246,5 +248,35 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
             instance.profile.save()
         except Profile.DoesNotExist:
             Profile.objects.create(user=instance)
+
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"OTP for {self.user.username}"
+
+    def is_valid(self):
+        # OTP is valid for 10 minutes
+        return (timezone.now() - self.created_at) < timedelta(minutes=10) and not self.is_used
+
+class SignupOTP(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    email = models.EmailField(unique=True)
+    username = models.CharField(max_length=150, unique=True)
+    temp_password = models.CharField(max_length=128)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], null=True, blank=True)
+
+    def __str__(self):
+        return f"Signup OTP for {self.email}"
+
+    def is_valid(self):
+        # OTP is valid for 10 minutes
+        return (timezone.now() - self.created_at) < timedelta(minutes=10) and not self.is_used
             
 

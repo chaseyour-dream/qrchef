@@ -176,6 +176,35 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  .gender-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 0.5em; /* Adjust spacing as needed */
+  }
+  .gender-selection label {
+    color: #444;
+    font-size: 1rem;
+    margin-bottom: 0.5em;
+    font-weight: 500;
+  }
+  .gender-options {
+    display: flex;
+    gap: 20px; /* Increase space between radio buttons */
+    align-items: center;
+  }
+  .gender-options label {
+    margin-bottom: 0; /* Remove bottom margin from radio button labels */
+    font-weight: normal; /* Reset font weight for radio button labels */
+    font-size: 0.95rem; /* Adjust font size */
+    color: #555; /* Adjust color */
+  }
+  .gender-options input[type="radio"] {
+    margin-right: 5px; /* Space between radio button and text */
+    accent-color: #e63946; /* Highlight color for selected radio button */
+    transform: scale(1.1); /* Slightly increase size */
+  }
 </style>
 <script>
 function togglePassword(id, el) {
@@ -256,6 +285,20 @@ function togglePassword(id, el) {
     <span class="input-icon"><i class='bx bx-lock'></i></span>
     <input type="password" id="signup-confirm" name="password2" placeholder="Confirm Password" required>
     <span class="toggle-password" onclick="togglePassword('signup-confirm', this)"><i class='bx bx-show'></i></span>
+  </div>
+  <div class="gender-selection">
+    <label for="gender">Gender:</label>
+    <div class="gender-options">
+      <label>
+        <input type="radio" name="gender" value="Male" required> Male
+      </label>
+      <label>
+        <input type="radio" name="gender" value="Female" required> Female
+      </label>
+      <label>
+        <input type="radio" name="gender" value="Other" required> Other
+      </label>
+    </div>
   </div>
   <button type="submit" class="signup">Signup</button>
 </form>

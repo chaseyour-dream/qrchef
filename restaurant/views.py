@@ -10,7 +10,7 @@ from restaurant.models import Food, Category, Room, RoomOrder, RoomOrderItem, Ca
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import WebsiteVisit, DashboardStats, Profile
+from .models import WebsiteVisit, DashboardStats, Profile, PasswordResetOTP, SignupOTP
 import json
 import logging
 from django.views.decorators.http import require_GET
@@ -26,6 +26,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+import random
+from django.core.mail import send_mail
+from django.contrib import messages
 
 
 
@@ -37,33 +40,119 @@ def index(request):
     return render(request, 'index.html', {'stats': stats})
 
 # Signup Page
-import random
-from django.core.mail import send_mail
-from django.contrib import messages
-from django.conf import settings
-
+@csrf_protect
 def signup_page(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         password2 = request.POST.get('password2')
         email = request.POST.get('email')
-        if not username or not password or not password2:
+        gender = request.POST.get('gender')
+        
+        # Basic validation
+        if not username or not password or not password2 or not email:
             messages.error(request, 'All fields are required.')
+            return render(request, 'signup.html', request.POST)
         elif password != password2:
             messages.error(request, 'Passwords do not match.')
+            return render(request, 'signup.html', request.POST)
         elif User.objects.filter(username=username).exists():
             messages.error(request, 'Username already exists.')
+            return render(request, 'signup.html', request.POST)
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists.')
-        else:
-            user = User.objects.create_user(username=username, password=password, email=email)
-            user.save()
-            messages.success(request, 'Account created successfully! Please log in.')
-            return redirect('login')
+            return render(request, 'signup.html', request.POST)
+        elif SignupOTP.objects.filter(username=username).exists():
+             messages.error(request, 'A signup attempt with this username is already in progress. Please check your email for the verification OTP.')
+             return render(request, 'signup.html', request.POST)
+        elif SignupOTP.objects.filter(email=email).exists():
+             messages.error(request, 'A signup attempt with this email address is already in progress. Please check your email for the verification OTP.')
+             return render(request, 'signup.html', request.POST)
+        elif SignupOTP.objects.filter(email=email, is_used=False).exists():
+             messages.error(request, 'An OTP has already been sent to this email. Please check your inbox or try again later.')
+             
+        # Generate and save OTP along with user details temporarily
+        otp = generate_otp()
+        SignupOTP.objects.create(
+            email=email,
+            username=username,
+            temp_password=password, # Storing plaintext temporarily before hashing during user creation
+            otp=otp,
+            gender=gender
+        )
+        
+        # Send email with OTP
+        send_mail(
+            'Verify Your Email Address - QR Chef',
+            f'Your OTP for email verification is: {otp}\n\nThis OTP is valid for 10 minutes.',
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        messages.success(request, 'Please check your email for the verification OTP.') # Message updated
+        
+        # Redirect to OTP verification page, passing email in session
+        request.session['signup_email_for_otp'] = email
+        return redirect('signup_otp_verify')
+
     return render(request, 'signup.html')
 
-# (verify_otp view removed)
+def signup_otp_verify(request):
+    if 'signup_email_for_otp' not in request.session:
+        messages.error(request, 'Please sign up first to get an OTP.')
+        return redirect('signup')
+        
+    email = request.session['signup_email_for_otp']
+
+    if request.method == 'POST':
+        otp = request.POST.get('otp')
+        try:
+            otp_obj = SignupOTP.objects.filter(
+                email=email,
+                otp=otp,
+                is_used=False
+            ).latest('created_at')
+            
+            if otp_obj.is_valid():
+                # Create the actual user account
+                user = User.objects.create_user(
+                    username=otp_obj.username,
+                    email=otp_obj.email,
+                    password=otp_obj.temp_password, # Use the temporarily stored password
+                    is_active=True # User is active upon verification
+                )
+                user.save()
+                
+                # Transfer gender from SignupOTP to Profile
+                profile, created = Profile.objects.get_or_create(user=user)
+                profile.gender = otp_obj.gender
+                profile.save()
+                
+                # Mark OTP as used and potentially delete the SignupOTP object
+                otp_obj.is_used = True
+                otp_obj.save()
+                # Optional: Delete the OTP record after successful verification
+                otp_obj.delete()
+                
+                # Clear the email from session
+                del request.session['signup_email_for_otp']
+                
+                messages.success(request, 'Email verified successfully! Your account is now active. You can now log in.') # Message updated
+                return redirect('login')
+            else:
+                messages.error(request, 'OTP has expired or is invalid.')
+                # Delete the failed OTP attempt and clear session
+                otp_obj.delete()
+                del request.session['signup_email_for_otp']
+                return redirect('signup') # Redirect back to signup page
+        except SignupOTP.DoesNotExist:
+            messages.error(request, 'Invalid OTP or email.')
+            # Clear session for security if email doesn't match any pending OTP
+            if 'signup_email_for_otp' in request.session:
+                del request.session['signup_email_for_otp']
+            return redirect('signup') # Redirect back to signup page
+            
+    return render(request, 'signup_otp_verify.html', {'email': email}) # Pass email to the template
 
 # Logout Page
 def logout_view(request):
@@ -71,10 +160,6 @@ def logout_view(request):
     return redirect('login')
 
 # Profile Page
-
-
-from django.contrib import messages
-
 def profile_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -98,10 +183,14 @@ def login_page(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            login(request, user)
-            # Robust: always ensure profile exists
-            Profile.objects.get_or_create(user=user)
-            return redirect('index')
+            # Check if the user is active
+            if user.is_active:
+                login(request, user)
+                # Robust: always ensure profile exists
+                Profile.objects.get_or_create(user=user)
+                return redirect('index')
+            else:
+                messages.error(request, 'Please verify your email address before logging in.')
         else:
             messages.error(request, 'Invalid username or password.')
     return render(request, 'login.html')
@@ -332,13 +421,24 @@ from django.views.decorators.csrf import csrf_exempt
 @csrf_exempt
 def confirm_order(request):
     if request.method == 'POST':
+        # Check if room_no is in session (from QR code scan)
+        room_no_session = request.session.get('room_no')
+        if not room_no_session:
+            return JsonResponse({"success": False, "error": "Please scan the QR code in your room to confirm the order."}, status=400)
+
         try:
             data = json.loads(request.body)
-            room_no = data.get('room_no')
+            # Ensure the room_no from the request body matches the session (optional, but good practice)
+            room_no_data = data.get('room_no')
+            if not room_no_data or room_no_data != room_no_session:
+                 return JsonResponse({"success": False, "error": "Invalid room number or session mismatch. Please rescan the QR code."}, status=400)
+
+            room_no = room_no_data # Use the room number from the data after validation
             items = data.get('items', [])
             
-            if not room_no:
-                return JsonResponse({"success": False, "error": "Room number is required"}, status=400)
+            # Original check for room_no in data (can keep for redundancy or remove)
+            # if not room_no:
+            #     return JsonResponse({"success": False, "error": "Room number is required"}, status=400)
             
             if not items:
                 return JsonResponse({"success": False, "error": "Cart is empty"}, status=400)
@@ -721,3 +821,80 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
     # Build PDF
     doc.build(elements)
     return response   
+
+def generate_otp():
+    return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+@csrf_protect
+def password_reset_request(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)
+            # Generate OTP
+            otp = generate_otp()
+            # Save OTP
+            PasswordResetOTP.objects.create(user=user, otp=otp)
+            # Send email with OTP
+            send_mail(
+                'Password Reset OTP - QR Chef',
+                f'Your OTP for password reset is: {otp}\n\nThis OTP is valid for 10 minutes.',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            return redirect('password_reset_otp_verify')
+        except User.DoesNotExist:
+            messages.error(request, 'No user found with this email address.')
+    return render(request, 'password_reset.html')
+
+def password_reset_otp_verify(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        otp = request.POST.get('otp')
+        try:
+            user = User.objects.get(email=email)
+            otp_obj = PasswordResetOTP.objects.filter(
+                user=user,
+                otp=otp,
+                is_used=False
+            ).latest('created_at')
+            
+            if otp_obj.is_valid():
+                # Mark OTP as used
+                otp_obj.is_used = True
+                otp_obj.save()
+                # Store user email in session for password reset
+                request.session['reset_email'] = email
+                return redirect('password_reset_confirm')
+            else:
+                messages.error(request, 'OTP has expired or is invalid.')
+        except (User.DoesNotExist, PasswordResetOTP.DoesNotExist):
+            messages.error(request, 'Invalid OTP or email.')
+    return render(request, 'password_reset_otp_verify.html')
+
+def password_reset_confirm(request):
+    if 'reset_email' not in request.session:
+        return redirect('password_reset')
+        
+    if request.method == 'POST':
+        email = request.session['reset_email']
+        password1 = request.POST.get('new_password1')
+        password2 = request.POST.get('new_password2')
+        
+        if password1 != password2:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'password_reset_confirm.html')
+            
+        try:
+            user = User.objects.get(email=email)
+            user.set_password(password1)
+            user.save()
+            del request.session['reset_email']
+            messages.success(request, 'Password has been reset successfully.')
+            return redirect('login')
+        except User.DoesNotExist:
+            messages.error(request, 'User not found.')
+            return redirect('password_reset')
+            
+    return render(request, 'password_reset_confirm.html')   
