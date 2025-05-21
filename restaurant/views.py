@@ -18,7 +18,8 @@ from django.utils import timezone
 import jwt
 from datetime import datetime, timedelta
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q
+from django.db.models import Q, Count, Sum
+from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
 from reportlab.lib import colors
@@ -636,26 +637,19 @@ def analytics_view(request):
         # Add other payment methods as needed
     ]
 
+    # Start with all RoomOrder objects
+    queryset = RoomOrder.objects.all()
+
+    # Filter by date range if dates are provided
+    from_date = None
+    to_date = None
     if request.method == 'POST':
-        # (Date parsing and filtering logic)
         try:
             if from_date_str:
                 from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
-            else:
-                from_date = None
-
+                queryset = queryset.filter(check_in__date__gte=from_date)
             if to_date_str:
                 to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
-            else:
-                to_date = None
-
-            # Start with all RoomOrder objects
-            queryset = RoomOrder.objects.all()
-
-            # Filter by date range if dates are provided
-            if from_date:
-                queryset = queryset.filter(check_in__date__gte=from_date)
-            if to_date:
                 # Add one day to the to_date so that the filter is inclusive of the selected end date
                 queryset = queryset.filter(check_in__date__lte=to_date)
 
@@ -666,18 +660,77 @@ def analytics_view(request):
             orders = queryset.order_by('check_in') # Order by check-in date
 
             # Fetch related RoomOrderItems for each order
-            for order in orders:
+            for order in orders: # This is for the table view, not strictly needed for charts but kept for existing functionality
                 order.items = order.roomorderitem_set.all()
 
-            # Calculate total revenue
+            # Calculate total revenue (for the table view)
             total_revenue = sum(order.get_total_bill() for order in orders)
+
+            # --- Data for Charts ---
+
+            # 1. Room Occupancy Pie Chart (based on filtered orders)
+            room_occupancy_data = orders.values('category__name').annotate(count=Count('id'))
+            room_occupancy_labels = [item['category__name'] for item in room_occupancy_data]
+            room_occupancy_counts = [item['count'] for item in room_occupancy_data]
+
+            # 2. Food Sold by Category Pie Chart (based on items in filtered orders)
+            # Get items from the filtered orders
+            filtered_order_item_ids = [item.id for order in orders for item in order.roomorderitem_set.all()]
+            food_sales_data = RoomOrderItem.objects.filter(id__in=filtered_order_item_ids).values('food__category__name').annotate(total_quantity=Sum('quantity'))
+
+            food_sales_labels = [item['food__category__name'] or 'Uncategorized' for item in food_sales_data]
+            food_sales_quantities = [item['total_quantity'] for item in food_sales_data]
+
+            # 3. Monthly Sales Revenue Bar Chart (based on filtered orders)
+            # Aggregate by month and year
+            monthly_revenue_data = orders.annotate(
+                month=ExtractMonth('check_in'), 
+                year=ExtractYear('check_in')
+            ).values('year', 'month').annotate(
+                monthly_sum=Sum(models.F('roomorderitem__quantity') * models.F('roomorderitem__price'), output_field=models.DecimalField())
+            ).order_by('year', 'month')
+            
+            # Format for Chart.js
+            monthly_revenue_labels = [f"{item['year']}-{item['month']:02d}" for item in monthly_revenue_data]
+            monthly_revenue_values = [float(item['monthly_sum']) if item['monthly_sum'] is not None else 0 for item in monthly_revenue_data]
+
 
         except ValueError:
             # Handle invalid date format
             orders = [] # Or None, depending on desired behavior
             total_revenue = 0
+            room_occupancy_labels = []
+            room_occupancy_counts = []
+            food_sales_labels = []
+            food_sales_quantities = []
+            monthly_revenue_labels = []
+            monthly_revenue_values = []
             # Optionally, add an error message
             # messages.error(request, "Invalid date format.")
+
+    else: # For GET requests, initialize with empty data or data for all time
+         orders = queryset.order_by('check_in')
+         for order in orders:
+            order.items = order.roomorderitem_set.all()
+         total_revenue = sum(order.get_total_bill() for order in orders)
+
+         # Calculate data for all time for GET request initial load
+         room_occupancy_data = RoomOrder.objects.all().values('category__name').annotate(count=Count('id'))
+         room_occupancy_labels = [item['category__name'] for item in room_occupancy_data]
+         room_occupancy_counts = [item['count'] for item in room_occupancy_data]
+
+         food_sales_data = RoomOrderItem.objects.all().values('food__category__name').annotate(total_quantity=Sum('quantity'))
+         food_sales_labels = [item['food__category__name'] or 'Uncategorized' for item in food_sales_data]
+         food_sales_quantities = [item['total_quantity'] for item in food_sales_data]
+
+         monthly_revenue_data = RoomOrder.objects.annotate(
+             month=ExtractMonth('check_in'), 
+             year=ExtractYear('check_in')
+             ).values('year', 'month').annotate(
+                 monthly_sum=Sum(models.F('roomorderitem__quantity') * models.F('roomorderitem__price'), output_field=models.DecimalField())
+                 ).order_by('year', 'month')
+         monthly_revenue_labels = [f"{item['year']}-{item['month']:02d}" for item in monthly_revenue_data]
+         monthly_revenue_values = [float(item['monthly_sum']) if item['monthly_sum'] is not None else 0 for item in monthly_revenue_data]
 
 
     context = {
@@ -685,9 +738,17 @@ def analytics_view(request):
         'to_date': to_date_str,
         'payment_method': payment_method,
         'payment_method_choices': payment_method_choices,
-        'orders': orders,
-        'total_revenue': total_revenue,
-        'request_path': request.path, # Add the request path to context
+        'orders': orders, # Keep for the table view
+        'total_revenue': total_revenue, # Keep for the table view
+        'request_path': request.path,
+
+        # Chart data
+        'room_occupancy_labels': json.dumps(room_occupancy_labels), # Pass as JSON strings
+        'room_occupancy_counts': json.dumps(room_occupancy_counts), # Pass as JSON strings
+        'food_sales_labels': json.dumps(food_sales_labels), # Pass as JSON strings
+        'food_sales_quantities': json.dumps(food_sales_quantities), # Pass as JSON strings
+        'monthly_revenue_labels': json.dumps(monthly_revenue_labels), # Pass as JSON strings
+        'monthly_revenue_values': json.dumps(monthly_revenue_values), # Pass as JSON strings
     }
 
     return render(request, 'admin/restaurant/roomorder/analytics.html', context)

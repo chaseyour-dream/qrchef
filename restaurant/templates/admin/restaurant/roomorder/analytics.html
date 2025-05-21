@@ -169,18 +169,164 @@
     <div class="no-print" style="margin-top: 25px;">
         <button type="button" onclick="printReport()" style="margin-right: 15px; padding: 10px 20px;">Print Report</button>
         {# Modified PDF download links to use query parameters #}
-        {% if payment_method %}
-            <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}&payment_method={{ payment_method }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
-        {% else %}
-            <a href="{% url 'admin:restaurant_generate_sales_report_pdf_all' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
-    {% endif %}
+        <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}&payment_method={{ payment_method|default:'' }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
 </div>
     {% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{# Chart Containers #}
+<div class="no-print" style="margin-top: 40px; display: flex; flex-wrap: wrap; gap: 30px;">
+    <div style="flex: 1; min-width: 300px; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h4 style="margin-top: 0; margin-bottom: 15px; text-align: center; color: #555;">Room Occupancy by Category</h4>
+        <canvas id="roomOccupancyChart"></canvas>
+    </div>
+
+    <div style="flex: 1; min-width: 300px; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h4 style="margin-top: 0; margin-bottom: 15px; text-align: center; color: #555;">Food Sales by Category</h4>
+        <canvas id="foodSalesChart"></canvas>
+    </div>
+</div>
+
+<div class="no-print" style="margin-top: 30px; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+    <h4 style="margin-top: 0; margin-bottom: 15px; text-align: center; color: #555;">Monthly Sales Revenue</h4>
+    <canvas id="monthlyRevenueChart"></canvas>
+</div>
 
 <script>
 function printReport() {
             window.print();
 }
+</script>
+
+<script>
+    // Data passed from Django view (parsed from JSON strings)
+    const roomOccupancyLabels = JSON.parse('{{ room_occupancy_labels|escapejs }}');
+    const roomOccupancyCounts = JSON.parse('{{ room_occupancy_counts|escapejs }}');
+    const foodSalesLabels = JSON.parse('{{ food_sales_labels|escapejs }}');
+    const foodSalesQuantities = JSON.parse('{{ food_sales_quantities|escapejs }}');
+    const monthlyRevenueLabels = JSON.parse('{{ monthly_revenue_labels|escapejs }}');
+    const monthlyRevenueValues = JSON.parse('{{ monthly_revenue_values|escapejs }}');
+
+    // --- Room Occupancy Pie Chart ---
+    const roomOccupancyCtx = document.getElementById('roomOccupancyChart').getContext('2d');
+    new Chart(roomOccupancyCtx, {
+        type: 'pie',
+        data: {
+            labels: roomOccupancyLabels,
+            datasets: [{
+                label: 'Number of Orders',
+                data: roomOccupancyCounts,
+                backgroundColor: [
+                '#FF0000',  // Standard Red
+                '#008000',  // Standard Green
+                '#0000FF',  // Standard Blue
+                '#FFFF00',  // Standard Yellow
+                '#FF00FF',  // Standard Magenta
+                '#00FFFF',  // Standard Cyan
+                '#f2e3d5',
+                '#d8b4a0',
+                '#b99c8e',
+                '#a77c6b',
+            ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Room Occupancy by Category'
+                }
+            }
+        },
+    });
+
+    // --- Food Sales by Category Pie Chart ---
+    const foodSalesCtx = document.getElementById('foodSalesChart').getContext('2d');
+    new Chart(foodSalesCtx, {
+        type: 'pie',
+        data: {
+            labels: foodSalesLabels,
+            datasets: [{
+                label: 'Quantity Sold',
+                data: foodSalesQuantities,
+                backgroundColor: [
+                '#FF0000',  // Standard Red
+                '#008000',  // Standard Green
+                '#0000FF',  // Standard Blue
+                '#FFFF00',  // Standard Yellow
+                '#FF00FF',  // Standard Magenta
+                '#00FFFF',  // Standard Cyan
+                '#f2e3d5',
+                '#d8b4a0',
+                '#b99c8e',
+                '#a77c6b',
+            ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Food Sales by Category'
+                }
+            }
+        },
+    });
+
+    // --- Monthly Sales Revenue Bar Chart ---
+    const monthlyRevenueCtx = document.getElementById('monthlyRevenueChart').getContext('2d');
+    new Chart(monthlyRevenueCtx, {
+        type: 'bar',
+        data: {
+            labels: monthlyRevenueLabels,
+            datasets: [{
+                label: 'Revenue (Rs)',
+                data: monthlyRevenueValues,
+                backgroundColor: '#FF0000',
+                borderColor: '#FF0000',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Monthly Sales Revenue'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Revenue (Rs)'
+                    }
+                },
+                x: {
+                     title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        },
+    });
+
 </script>
 
 </div>

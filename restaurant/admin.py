@@ -223,14 +223,14 @@ class RoomOrderAdmin(admin.ModelAdmin):
     bill_payments_section.short_description = ""
 
     def analytics_link(self, obj):
-        return format_html(f'<a href="/admin/restaurant/roomorder/analytics/">View Analytics</a>')
+        # Use the correct URL pattern for the analytics view
+        return format_html('<a href="{}">View Analytics</a>', reverse('admin:restaurant_roomorder_analytics'))
     analytics_link.short_description = 'Analytics'
 
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
-            path('analytics/', self.admin_site.admin_view(analytics_view), name='roomorder_analytics'),
-            path('analytics/pdf/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf_all'),
+            path('analytics/', self.admin_site.admin_view(analytics_view), name='restaurant_roomorder_analytics'),
             path('analytics/pdf/', self.admin_site.admin_view(generate_sales_report_pdf), name='restaurant_generate_sales_report_pdf'),
         ]
         return custom_urls + urls
