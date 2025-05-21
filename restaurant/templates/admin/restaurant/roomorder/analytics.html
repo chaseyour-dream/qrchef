@@ -144,8 +144,39 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                            <div style="text-align: right; font-weight: bold; font-size: 1em; color: #555;">
-                                Order Total: Rs {{ order.get_total_bill|floatformat:2 }}
+                            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                                <tr>
+                                    <td style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Order Total</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-weight: bold;">Rs {{ order.get_total_cost_of_orders|floatformat:2 }}</td>
+                                </tr>
+                            </table>
+                            <div style="margin-top: 15px;">
+                                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                                    <tr style="background-color: #f9f9f9;">
+                                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Description</th>
+                                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Amount</th>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Room Type</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ order.category.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Days Stayed</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ order.get_days_stayed }} days</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Room Charge</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">Rs {{ order.get_room_charge|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Order Total</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">Rs {{ order.get_total_cost_of_orders|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Grand Total</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-weight: bold;">Rs {{ order.get_total_bill|floatformat:2 }}</td>
+                                    </tr>
+                                </table>
                             </div>
                         </div>
                     </td>

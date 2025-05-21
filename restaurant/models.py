@@ -110,13 +110,15 @@ class RoomOrder(models.Model):
     def get_room_charge(self):
         if self.category:
             try:
-                val = float(self.get_days_stayed()) * float(self.category.price_per_night)
+                days = self.get_days_stayed()
+                price = self.category.price_per_night
+                val = Decimal(days) * price
                 print("DEBUG get_room_charge:", val, type(val))
                 return val
             except Exception as e:
                 print("ERROR get_room_charge:", e)
-                return 0.0
-        return 0.0
+                return Decimal('0.00')
+        return Decimal('0.00')
 
     def get_total_items(self):
         return sum(item.quantity for item in self.roomorderitem_set.all())
