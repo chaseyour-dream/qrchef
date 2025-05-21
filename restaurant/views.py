@@ -63,8 +63,8 @@ class NumberedDocTemplate(BaseDocTemplate):
 
         # Create a frame with a border
         frame = Frame(frame_x, frame_y, frame_width, frame_height,
-                      leftPadding=0, bottomPadding=0,
-                      rightPadding=0, topPadding=margin) # Increase top padding to add space below the top border
+                      leftPadding=20, bottomPadding=20,
+                      rightPadding=20, topPadding=20) # Increase padding around the frame
 
 
         template = PageTemplate(id='numbered_page', frames=[frame], onPage=self.draw_page_border)
@@ -965,7 +965,7 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
                 room_charge = order.get_room_charge() if order.category else 0.0
                 room_type = order.category.name if order.category else 'N/A'
                 # Add order details paragraph
-                order_details_text = f"Order ID: {order.id} | Room No.: <b>{order.room_number or 'N/A'}</b> | Customer Name: {order.customer_name or 'N/A'} | Date: {order.check_in.strftime('%Y-%m-%d') if order.check_in else 'N/A'}"
+                order_details_text = f"Room No.: <b>{order.room_number or 'N/A'}</b> | Customer Name: {order.customer_name or 'N/A'} | Date: {order.check_in.strftime('%Y-%m-%d') if order.check_in else 'N/A'}"
                 elements.append(Paragraph(order_details_text, order_details_style))
 
                 # Fetch items for this order (already done in the view, but ensure it's available)
@@ -982,13 +982,13 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
                             f"Rs {item.quantity * item.price:.2f}"
                         ])
 
-                    # Create a style for bold text
+                    # Create a style for bold text with black color
                     bold_style = ParagraphStyle(
                         'BoldText',
                         parent=styles['Normal'],
                         fontName='Helvetica-Bold',
                         fontSize=10,
-                        textColor=colors.HexColor('#006400'),
+                        textColor=colors.black,  # Black color for better readability
                         alignment=1,  # Center alignment
                         spaceAfter=5
                     )
@@ -1018,7 +1018,7 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
                         Paragraph(str(days_stayed) + ' days', bold_style)
                     ])
 
-                    # Add grand total using model's get_total_bill method
+                    # Add grand total as a table row
                     grand_total = order.get_total_bill()
                     item_data.append([
                         Paragraph('Grand Total:', bold_style),
@@ -1029,89 +1029,45 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
 
                     # Create and style the item details table
                     # Adjust column widths for the item table relative to page width
-                    item_col_widths = [doc.width*0.4, doc.width*0.1, doc.width*0.2, doc.width*0.25]
+                    item_col_widths = [doc.width*0.4, doc.width*0.1, doc.width*0.2, doc.width*0.2]
                     item_table = Table(item_data, colWidths=item_col_widths)
 
                     # Apply the combined style and add specific styles for the total row
                     style_list = [
                         # Header Row Styles
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#006400')), # Dark green header fill
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), # White text for header
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFA500')), # Orange header fill
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black), # Black text for header
                         ('ALIGN', (0, 0), (-1, 0), 'CENTER'), # Center Align header text
                         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                         ('FONTSIZE', (0, 0), (-1, 0), 8),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 8), # Increased padding for header
-                        ('TOPPADDING', (0, 0), (-1, 0), 8), # Increased padding for header
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 15),  # Increased bottom padding for header
+                        ('TOPPADDING', (0, 0), (-1, 0), 8),
 
                         # Data Rows Styles (Item, Qty, Price, Total columns)
-                        ('ALIGN', (0, 1), (-1, -2), 'CENTER'), # Center align all data rows (excluding header and order total)
+                        ('ALIGN', (0, 1), (-1, -2), 'CENTER'),
                         ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
                         ('FONTSIZE', (0, 1), (-1, -2), 8),
-                        ('BOTTOMPADDING', (0, 1), (-1, -2), 6), # Increased padding for data
-                        ('TOPPADDING', (0, 1), (-1, -2), 6), # Increased padding for data
+                        ('BOTTOMPADDING', (0, 1), (-1, -2), 10),  # Increased bottom padding for data rows
+                        ('TOPPADDING', (0, 1), (-1, -2), 6),
+
+                        # Special Rows Styles (Order Total, Room Charge, etc.)
+                        ('FONTNAME', (0, -4), (-1, -1), 'Helvetica-Bold'),
+                        ('TEXTCOLOR', (0, -4), (-1, -1), colors.black),
+                        ('ALIGN', (0, -4), (-1, -1), 'CENTER'),
+                        ('BOTTOMPADDING', (0, -4), (-1, -1), 15),  # Increased bottom padding for special rows
+                        ('TOPPADDING', (0, -4), (-1, -1), 5),
+
+                        # Grid and Box for the entire table
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),  # Add grid lines
+                        ('BOX', (0, 0), (-1, -1), 1, colors.black),   # Add box around table
+                        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
 
                         # Alternating Row Colors for data rows
-                        ('BACKGROUND', (0, 1), (-1, -2), colors.white), # Default row background
-                        ('BACKGROUND', (0, 2), (-1, -2), colors.HexColor('#eeeeee')), # Lighter alternating row background
-
-                        # Grid and Box for the entire table
-                        ('GRID', (0, 0), (-1, -1), 0, colors.white), # No grid (based on previous requests)
-                        ('BOX', (0, 0), (-1, -1), 0, colors.white), # No box (based on previous requests)
-                        ('LEFTPADDING', (0, 0), (-1, -1), 5), # Add left padding to table content
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 5), # Add right padding to table content
-
-                        # Styles for the 'Order Total' row (second to last row)
-                        ('SPAN', (0, -1), (2, -1)), # Span the first three columns for the 'Order Total' text
-                        ('ALIGN', (0, -1), (-1, -1), 'CENTER'), # Center align the Order Total row content
-                        ('LEFTPADDING', (0, -1), (0, -1), 5), # Add left padding to the 'Order Total' label
-                        ('BOTTOMPADDING', (0, -1), (-1, -1), 5), # Add bottom padding to the order total row
-                        ('TOPPADDING', (0, -1), (-1, -1), 5), # Add top padding to the order total row
-                        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#006400')), # Dark green color for Order Total
+                        ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+                        ('BACKGROUND', (0, 2), (-1, -2), colors.HexColor('#eeeeee'))
                     ]
-                    item_table.setStyle(TableStyle(style_list))
-                    item_data.append([
-                        Paragraph('Days Stayed:', bold_style),
-                        '',
-                        '',
-                        Paragraph(str(days_stayed), bold_style)
-                    ])
-
-                    # Apply the combined style and add specific styles for the total row
-                    style_list = [
-                        # Header Row Styles
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#006400')), # Dark green header fill
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), # White text for header
-                        ('ALIGN', (0, 0), (-1, 0), 'LEFT'), # Align header text to left
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 8),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 8), # Increased padding for header
-                        ('TOPPADDING', (0, 0), (-1, 0), 8), # Increased padding for header
-
-                        # Data Rows Styles (excluding header and total rows for now)
-                        ('ALIGN', (0, 1), (0, -2), 'LEFT'), # Item Name Left Align (Exclude total rows)
-                        ('ALIGN', (1, 1), (1, -2), 'CENTER'), # Qty Center Align (Exclude total rows)
-                        ('ALIGN', (2, 1), (-1, -2), 'RIGHT'), # Price and Total Right Align (Exclude total rows)
-                        ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
-                        ('FONTSIZE', (0, 1), (-1, -2), 8),
-                        ('BOTTOMPADDING', (0, 1), (-1, -2), 6), # Increased padding for data
-                        ('TOPPADDING', (0, 1), (-1, -2), 6), # Increased padding for data
-
-                        # Grid and Box for the entire table
-                        ('GRID', (0, 0), (-1, -1), 0, colors.white), # No grid
-                        ('BOX', (0, 0), (-1, -1), 0, colors.white), # No box
-                        ('LEFTPADDING', (0, 0), (-1, -1), 5), # Add left padding to table content
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 5), # Add right padding to table content
-
-                        # Styles for the 'Order Total' row (second to last row)
-                        ('SPAN', (0, -1), (2, -1)), # Span the first three columns for the 'Order Total' text (relative to current table size)
-                        ('LEFTPADDING', (0, -1), (0, -1), 5), # Add left padding to the 'Order Total' label
-                        ('BOTTOMPADDING', (0, -1), (-1, -1), 5), # Add bottom padding to the order total row
-                        ('TOPPADDING', (0, -1), (-1, -1), 5), # Add top padding to the order total row
-                        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'), # Ensure font is bold for the order total row
-                        ('FONTSIZE', (0, -1), (-1, -1), 10), # Increased font size for Order Total
-                        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#006400')), # Dark green color for Order Total
-                    ]
-
+                    
                     # Add alternating row colors for the item rows (excluding header and order total)
                     # The range is from the first data row (index 1) up to the second to last row (index -1 which is the order total)
                     for i in range(1, len(item_data) -1):
@@ -1122,23 +1078,35 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
 
                     item_table.setStyle(TableStyle(style_list))
                     elements.append(item_table)
+                    # Add a Spacer between tables
+                    elements.append(Spacer(1, 40))  # 40 points of space between tables
 
             # Add overall summary (Total Revenue) at the very end AFTER all order tables are added
             total_revenue = sum(order.get_total_bill() for order in orders)
 
             if orders: # Add overall total only if there are orders
+                # Create a style for the overall total text
+                overall_total_style = ParagraphStyle(
+                    'OverallTotal',
+                    parent=styles['Normal'],
+                    fontSize=14,  # Larger font size
+                    textColor=colors.red,  # Red color
+                    fontName='Helvetica-Bold',  # Bold font
+                    alignment=1  # Center alignment
+                )
+
                 # Create data for the overall total row
                 overall_total_data_row = [
-                    Paragraph('<b>Overall Total Revenue:</b>', styles['Normal']), # Label for overall total, using Paragraph for styling
-                    '', # Empty cells for spanning
+                    Paragraph('<b>Overall Total Revenue:</b>', overall_total_style),
                     '',
-                    Paragraph(f"<b>Rs {total_revenue:.2f}</b>", styles['Normal']) # Overall total amount, using Paragraph
+                    '',
+                    Paragraph(f'<b>Rs {total_revenue:.2f}</b>', overall_total_style)
                 ]
 
                 # Create a table for the overall total to control its styling and column spanning
                 # This table will only have one row (the overall total)
                 # Use the same column widths as the item table for alignment
-                item_col_widths = [doc.width*0.4, doc.width*0.1, doc.width*0.2, doc.width*0.25]
+                item_col_widths = [doc.width*0.4, doc.width*0.1, doc.width*0.2, doc.width*0.2]
                 overall_total_table = Table([overall_total_data_row], colWidths=item_col_widths)
 
                 # Define style for the overall total table
@@ -1146,12 +1114,10 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
                     ('TOPBORDER', (0, 0), (-1, 0), 2, colors.black), # Add a top border above the overall total
                     ('BOTTOMPADDING', (0, 0), (-1, 0), 5), # Add bottom padding
                     ('TOPPADDING', (0, 0), (-1, 0), 10), # Add top padding (more space above)
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#006400')), # Dark green color for text
-                    ('SPAN', (0, 0), (2, 0)), # Span the first three columns for the label
-                    ('ALIGN', (0, 0), (2, 0), 'CENTER'), # Center align the spanned label
-                    ('ALIGN', (3, 0), (3, 0), 'CENTER'), # Center align the total amount
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.red), # Red color for text
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'), # Center align the entire row
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), # Ensure bold font
-                    ('FONTSIZE', (0, 0), (-1, 0), 12), # Slightly larger font
+                    ('FONTSIZE', (0, 0), (-1, 0), 14), # Larger font size
                 ])
 
                 # Apply style and add the overall total table to elements
@@ -1159,6 +1125,7 @@ def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_met
                 elements.append(overall_total_table)
             else:
                 elements.append(Paragraph("No orders found for the selected date range and payment method.", styles['Normal']))
+            
 
     except Exception as e:
         elements.append(Paragraph(f"Error generating report: {str(e)}", styles['Normal']))

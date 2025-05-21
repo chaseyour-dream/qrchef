@@ -1,6 +1,9 @@
 {% extends 'admin/base_site.html' %}
 {% load i18n admin_urls static jazzmin %}
 
+<!-- Add Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
 {% block content %}
 <div id="content-main" style="padding: 20px; width: 100%;">
     
@@ -8,6 +11,36 @@
         /* Styles for alternating table rows */
         #sales-report-table tbody tr:nth-child(odd) {
             background-color: #f9f9f9;
+        }
+
+        /* Button styles */
+        .btn-pdf, .btn-print {
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white !important;
+            text-decoration: none !important;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 1em;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-pdf:hover, .btn-print:hover {
+            background-color: #c82333;
+        }
+        
+        .btn-pdf i, .btn-pdf a, .btn-print i {
+            color: white !important;
+            font-size: 16px;
+        }
+        
+        .btn-pdf a {
+            color: white !important;
+            text-decoration: none !important;
         }
 
         /* Styles for print view */
@@ -194,14 +227,17 @@
     {% if total_revenue is not None %}
     <div style="margin-top: 25px; padding: 20px; text-align: right; font-size: 1.3em; font-weight: bold; border-top: 2px solid #417690;">
         Total Revenue: Rs {{ total_revenue|floatformat:2 }}
-            </div>
-    {% endif %}
+    </div>
 
-    <div class="no-print" style="margin-top: 25px;">
-        <button type="button" onclick="printReport()" style="margin-right: 15px; padding: 10px 20px;">Print Report</button>
-        {# Modified PDF download links to use query parameters #}
-        <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|default:'' }}&to_date={{ to_date|default:'' }}&payment_method={{ payment_method|default:'' }}" class="button" style="text-decoration: none; padding: 10px 20px; background-color: #417690; color: white; border-radius: 4px;">Download PDF</a>
-</div>
+    <div style="margin-top: 20px;">
+        <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|urlencode }}&to_date={{ to_date|urlencode }}&payment_method={{ payment_method|urlencode }}" class="btn-pdf">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </a>
+        <button onclick="printReport()" class="btn-print">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+    </div>
+{% endif %}
     {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -361,4 +397,4 @@ function printReport() {
 </script>
 
 </div>
-{% endblock %} 
+{% endblock %}
