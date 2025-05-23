@@ -18,8 +18,8 @@ from django.utils import timezone
 import jwt
 from datetime import datetime, timedelta
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q, Count, Sum
-from django.db.models.functions import ExtractMonth, ExtractYear
+from django.db.models import Q, Count, Sum, F, Avg, ExpressionWrapper
+from django.db.models.functions import ExtractMonth, ExtractYear, Coalesce
 from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
 from reportlab.lib import colors
@@ -30,7 +30,6 @@ from reportlab.lib.units import inch, cm
 import random
 from django.core.mail import send_mail
 from django.contrib import messages
-from reportlab.platypus import PageBreak
 from reportlab.platypus import PageTemplate, BaseDocTemplate, Frame
 from decimal import Decimal
 
@@ -73,13 +72,7 @@ class NumberedDocTemplate(BaseDocTemplate):
     def draw_page_border(self, canvas, doc):
         canvas.saveState()
         margin = 1.5 * cm
-        # Draw border around the content area defined by the margin
-        canvas.setStrokeColor(colors.black) # Border color
-        canvas.setLineWidth(3) # Border thickness (3px)
-        # Draw rectangle from (margin, margin) to (page_width - margin, page_height - margin)
-        canvas.rect(margin, margin, doc.pagesize[0] - 2 * margin, doc.pagesize[1] - 2 * margin)
-        
-        # Draw page number
+        # Draw page number only, no border
         canvas.setFont('Helvetica', 9)
         # Position page number relative to the bottom margin
         canvas.drawString(margin, 0.75 * cm, f"Page {doc.page}")
@@ -623,42 +616,44 @@ def room_access(request, token):
 
 @user_passes_test(lambda u: u.is_staff)
 def analytics_view(request):
-    from_date_str = request.POST.get('from_date')
-    to_date_str = request.POST.get('to_date')
-    payment_method = request.POST.get('payment_method', '') # Default to '' for 'All'
+    # Get date parameters from either GET or POST
+    from_date_str = request.GET.get('from_date') or request.POST.get('from_date')
+    to_date_str = request.GET.get('to_date') or request.POST.get('to_date')
+    payment_method = request.GET.get('payment_method') or request.POST.get('payment_method', '')
 
     orders = None
     total_revenue = 0
+    room_occupancy_data = None
+    food_sales_data = None
+    monthly_revenue_data = None
 
     payment_method_choices = [
         ('Cash', 'Cash'),
         ('Card', 'Card'),
         ('Mobile', 'Mobile'),
         ('Online', 'Online'),
-        # Add other payment methods as needed
     ]
 
     # Start with all RoomOrder objects
     queryset = RoomOrder.objects.all()
 
-    # Filter by date range if dates are provided
-    from_date = None
-    to_date = None
-    if request.method == 'POST':
+    # Process date filters if provided
+    if from_date_str and to_date_str:
         try:
-            if from_date_str:
-                from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
-                queryset = queryset.filter(check_in__date__gte=from_date)
-            if to_date_str:
-                to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
-                # Add one day to the to_date so that the filter is inclusive of the selected end date
-                queryset = queryset.filter(check_in__date__lte=to_date)
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
+            to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
 
-            # Filter by payment method if a specific one is selected
+            # Filter by date range
+            queryset = queryset.filter(
+                check_in__date__gte=from_date,
+                check_in__date__lte=to_date
+            )
+
+            # Filter by payment method if specified
             if payment_method:
                 queryset = queryset.filter(payment_method=payment_method)
 
-            orders = queryset.order_by('check_in') # Order by check-in date
+            orders = queryset.order_by('check_in')
 
             # Fetch related RoomOrderItems for each order
             for order in orders: # This is for the table view, not strictly needed for charts but kept for existing functionality
@@ -683,18 +678,61 @@ def analytics_view(request):
             food_sales_quantities = [item['total_quantity'] for item in food_sales_data]
 
             # 3. Monthly Sales Revenue Bar Chart (based on filtered orders)
-            # Aggregate by month and year
-            monthly_revenue_data = orders.annotate(
-                month=ExtractMonth('check_in'), 
-                year=ExtractYear('check_in')
-            ).values('year', 'month').annotate(
-                monthly_sum=Sum(models.F('roomorderitem__quantity') * models.F('roomorderitem__price'), output_field=models.DecimalField())
-            ).order_by('year', 'month')
+            # Group by month and year within the selected date range
+            from collections import defaultdict
+            from decimal import Decimal
             
-            # Format for Chart.js
+            # Initialize a dictionary to store monthly data
+            monthly_data = defaultdict(lambda: {
+                'food_revenue': Decimal('0.00'),
+                'room_revenue': Decimal('0.00'),
+                'total_revenue': Decimal('0.00')
+            })
+            
+            # Process each order and group by month
+            for order in orders:
+                month = order.check_in.month
+                year = order.check_in.year
+                month_key = f"{year}-{month:02d}"
+                
+                # Calculate food revenue for this order
+                food_revenue = sum(
+                    item.quantity * item.price 
+                    for item in order.roomorderitem_set.all()
+                )
+                
+                # Calculate room revenue for this order
+                room_revenue = Decimal('0.00')
+                if order.category and order.category.price_per_night:
+                    room_revenue = order.category.price_per_night * order.get_days_stayed()
+                
+                # Update monthly data
+                monthly_data[month_key]['year'] = year
+                monthly_data[month_key]['month'] = month
+                monthly_data[month_key]['food_revenue'] += food_revenue
+                monthly_data[month_key]['room_revenue'] += room_revenue
+                monthly_data[month_key]['total_revenue'] += (food_revenue + room_revenue)
+            
+            # Convert to list format expected by the template
+            monthly_revenue_data = [
+                {
+                    'year': data['year'],
+                    'month': data['month'],
+                    'food_revenue': data['food_revenue'],
+                    'room_revenue': data['room_revenue'],
+                    'total_revenue': data['total_revenue']
+                }
+                for data in monthly_data.values()
+            ]
+            
+            # Sort by year and month
+            monthly_revenue_data.sort(key=lambda x: (x['year'], x['month']))
+            
+            # Format data for Chart.js
             monthly_revenue_labels = [f"{item['year']}-{item['month']:02d}" for item in monthly_revenue_data]
-            monthly_revenue_values = [float(item['monthly_sum']) if item['monthly_sum'] is not None else 0 for item in monthly_revenue_data]
-
+            monthly_food_revenue = [float(item['food_revenue']) for item in monthly_revenue_data]
+            monthly_room_revenue = [float(item['room_revenue']) for item in monthly_revenue_data]
+            monthly_revenue_values = [f + r for f, r in zip(monthly_food_revenue, monthly_room_revenue)]
 
         except ValueError:
             # Handle invalid date format
@@ -734,25 +772,23 @@ def analytics_view(request):
          monthly_revenue_values = [float(item['monthly_sum']) if item['monthly_sum'] is not None else 0 for item in monthly_revenue_data]
 
 
-    context = {
+    return render(request, 'admin/restaurant/roomorder/analytics.html', {
+        'orders': orders,
+        'total_revenue': total_revenue,
+        'room_occupancy_labels': json.dumps(room_occupancy_labels) if room_occupancy_data else '[]',
+        'room_occupancy_counts': json.dumps(room_occupancy_counts) if room_occupancy_data else '[]',
+        'food_sales_labels': json.dumps(food_sales_labels) if food_sales_data else '[]',
+        'food_sales_quantities': json.dumps(food_sales_quantities) if food_sales_data else '[]',
+        'monthly_revenue_labels': json.dumps(monthly_revenue_labels) if 'monthly_revenue_labels' in locals() else '[]',
+        'monthly_revenue_values': json.dumps(monthly_revenue_values) if 'monthly_revenue_values' in locals() else '[]',
+        'monthly_food_revenue': json.dumps(monthly_food_revenue) if 'monthly_food_revenue' in locals() else '[]',
+        'monthly_room_revenue': json.dumps(monthly_room_revenue) if 'monthly_room_revenue' in locals() else '[]',
+        'payment_method_choices': payment_method_choices,
+        'selected_payment_method': payment_method,
         'from_date': from_date_str,
         'to_date': to_date_str,
-        'payment_method': payment_method,
-        'payment_method_choices': payment_method_choices,
-        'orders': orders, # Keep for the table view
-        'total_revenue': total_revenue, # Keep for the table view
         'request_path': request.path,
-
-        # Chart data
-        'room_occupancy_labels': json.dumps(room_occupancy_labels), # Pass as JSON strings
-        'room_occupancy_counts': json.dumps(room_occupancy_counts), # Pass as JSON strings
-        'food_sales_labels': json.dumps(food_sales_labels), # Pass as JSON strings
-        'food_sales_quantities': json.dumps(food_sales_quantities), # Pass as JSON strings
-        'monthly_revenue_labels': json.dumps(monthly_revenue_labels), # Pass as JSON strings
-        'monthly_revenue_values': json.dumps(monthly_revenue_values), # Pass as JSON strings
-    }
-
-    return render(request, 'admin/restaurant/roomorder/analytics.html', context)
+    })
 
 @user_passes_test(lambda u: u.is_staff)
 def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_method=None):

@@ -1,5 +1,10 @@
 import os
+import sys
 import django
+
+# Add the project directory to the Python path
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_dir)
 
 # Configure Django settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings') # Replace 'myproject.settings' with your project's settings module
@@ -23,7 +28,7 @@ def generate_room_token(room_number):
     print(f"Generating token for room {room_number}: exp={payload['exp']} now={datetime.now()}")
     return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
-BASE_URL = "http://192.168.15.69:8000/menu/access/"  # Changed URL to use access endpoint
+BASE_URL = "http://192.168.15.67:8000/menu/access/"  # Changed URL to use access endpoint
 
 room_numbers = range(101, 122)  # Example: Rooms 101 to 110
 
