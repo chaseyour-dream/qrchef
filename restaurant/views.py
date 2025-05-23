@@ -794,7 +794,8 @@ def analytics_view(request):
 def generate_sales_report_pdf(request, from_date=None, to_date=None, payment_method=None):
     # Create the HttpResponse object with PDF headers
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="sales_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"' # Added timestamp for unique filenames
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    response['Content-Disposition'] = f'attachment; filename="sales_report_{timestamp}.pdf"'
 
     # Create the PDF object using the custom template
     doc = NumberedDocTemplate(response, pagesize=letter) # Create doc object here

@@ -54,8 +54,8 @@ class OrderDateRangeFilter(admin.SimpleListFilter):
 class RoomOrderAdmin(admin.ModelAdmin):
     inlines = [RoomOrderItemInline]
     list_display = (
-        'room_number', 'category', 'check_in', 'check_out', 'get_total_bill', 'payment_method', 'is_active',
-        'customer_name',  # Added customer_name to list_display
+        'room_number','customer_name', 'category', 'check_in', 'check_out', 'get_total_bill', 'payment_method', 'is_active',
+          # Added customer_name to list_display
     )
     list_filter = ('category', 'is_active', 'payment_method', 'check_in', 'check_out',)
     search_fields = ('room_number__room_number', 'customer_name') # Assuming room_number is a CharField or similar, adjust if needed

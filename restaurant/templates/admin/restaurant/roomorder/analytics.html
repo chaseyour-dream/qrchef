@@ -1,0 +1,1460 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n admin_urls static jazzmin %}
+
+<!-- Add Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+{% block content %}
+<div id="content-main" style="padding: 20px; width: 100%;">
+    <!-- Date Filter Form -->
+    <div class="date-filter-container" style="margin-bottom: 30px; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
+        <form id="dateFilterForm" method="get" style="display: flex; gap: 20px; align-items: flex-end;">
+            <div>
+                <label for="from_date" style="display: block; margin-bottom: 8px; font-weight: 600; color: #417690;">From Date:</label>
+                <input type="date" id="from_date" name="from_date" required 
+                       style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+            </div>
+            <div>
+                <label for="to_date" style="display: block; margin-bottom: 8px; font-weight: 600; color: #417690;">To Date:</label>
+                <input type="date" id="to_date" name="to_date" required 
+                       style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+            </div>
+            <button type="submit" class="btn-pdf" style="margin-bottom: 0;">
+                <i class="fas fa-search"></i> Show Report
+            </button>
+        </form>
+    </div>
+
+    <!-- Content Container -->
+    <div id="reportContent" style="display: none;">
+   
+    
+    <style>
+        /* Styles for alternating table rows */
+        #sales-report-table tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        /* Button styles */
+        .btn-pdf, .btn-print {
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white !important;
+            text-decoration: none !important;
+            border: none !important;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 1em;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-pdf:hover, .btn-print:hover {
+            background-color: #c82333;
+        }
+        
+        .btn-pdf i, .btn-pdf a, .btn-print i {
+            color: white !important;
+            font-size: 16px;
+        }
+        
+        .btn-pdf a {
+            color: white !important;
+            text-decoration: none !important;
+        }
+        
+        /* Chart Toggle Button Styles */
+        /* Chart toggle button uses .btn-pdf class for consistent styling */
+
+        /* Print Styles - Optimized for Space */
+        @media print {
+            /* Base Reset */
+            * {
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Page Setup */
+            @page {
+                size: A4 portrait;
+                margin: 0.8cm 1cm 1.2cm 1cm;
+            }
+
+            /* Typography */
+            body {
+                font-family: Arial, sans-serif !important;
+                font-size: 11pt !important;
+                line-height: 1.5 !important;
+                color: #000 !important;
+                background: #fff !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            
+            /* Improve spacing for all text elements */
+            p, h1, h2, h3, h4, h5, h6, td, th, li {
+                line-height: 1.6 !important;
+                margin-bottom: 0.5em !important;
+            }
+
+            /* Hide Unwanted Elements */
+            .no-print,
+            .date-filter-container,
+            .btn-pdf,
+            .btn-print,
+            #toggleChartsBtn,
+            .action-buttons,
+            .header-actions,
+            .breadcrumbs,
+            #footer, .footer, .jazzmin-version, .copyright, 
+            footer, [class*="footer"], [id*="footer"], .sidebar-footer {
+                display: none !important;
+            }
+
+            /* Main Content */
+            #content-main {
+                padding: 0 !important;
+                margin: 0 auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* Charts Section - Portrait Layout */
+            #chartsSection {
+                display: block !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                width: 95% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Chart rows with balanced spacing */
+            .chart-row {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                justify-content: space-between !important;
+                margin: 0 0 18px 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                gap: 15px !important;
+            }
+
+            /* Chart Containers - Optimized */
+            .chart-container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0 !important;
+                padding: 15px !important;
+                border: 1px solid #e0e0e0 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+                flex: 1 1 calc(50% - 15px) !important;
+                min-width: 48% !important;
+                max-width: 100% !important;
+                box-sizing: border-box;
+                min-height: 280px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Chart Headers */
+            .chart-container h3 {
+                color: #000 !important;
+                font-size: 1.2em !important;
+                margin: 0 0 8px 0 !important;
+                padding: 0 0 5px 0 !important;
+                border-bottom: 1px solid #eee !important;
+                text-align: center !important;
+            }
+
+            /* Ensure Charts are Visible */
+            canvas {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+
+            /* Tables */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin: 0 !important;
+                font-size: 9pt !important;
+                page-break-inside: auto;
+            }
+
+            th, td {
+                border: 1px solid #ddd !important;
+                padding: 3px 4px !important;
+                line-height: 1.1 !important;
+            }
+
+            /* Chart Canvas */
+            .chartjs-render-monitor {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Remove extra spacing in chart containers */
+            .chartjs-size-monitor,
+            .chartjs-size-monitor-expand,
+            .chartjs-size-monitor-shrink {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                pointer-events: none !important;
+                visibility: hidden !important;
+                z-index: -1 !important;
+            }
+
+                /* Compact table rows */
+                #sales-report-table tr td {
+                    padding: 4px !important;
+                    line-height: 1.2 !important;
+                }
+
+                /* Remove extra space between orders */
+                #sales-report-table tbody tr:not(:last-child) {
+                    border-bottom: 1px solid #ddd;
+                }
+
+                /* Adjust order details spacing */
+                .order-details {
+                    margin: 0 !important;
+                    padding: 2px !important;
+                    border: none !important;
+                }
+
+                /* Compact order items table */
+                .order-items-table {
+                    margin: 0 !important;
+                }
+
+                .order-items-table th,
+                .order-items-table td {
+                    padding: 2px !important;
+                    line-height: 1.2 !important;
+                }
+
+                /* Remove margins from paragraphs and headings */
+                p, h1, h2, h3, h4, h5, h6 {
+                    margin: 2px 0 !important;
+                }
+
+                /* Adjust report header spacing */
+                .report-header {
+                    margin-bottom: 10px !important;
+                }
+
+                /* Remove extra white space */
+                table {
+                    margin-bottom: 0 !important;
+                }
+
+                tbody tr:last-child {
+                    border-bottom: none !important;
+                }
+
+                /* Force background colors and images to print */
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+
+                /* Body and container styles */
+                body {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    background: white;
+                }
+
+                #content-main {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                }
+
+                /* Report header styles */
+                .report-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+
+                /* Table styles */
+                #sales-report-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    page-break-inside: auto;
+                }
+
+                #sales-report-table tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                }
+
+                #sales-report-table td,
+                #sales-report-table th {
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+
+                /* Order details styles */
+                .order-details {
+                    margin: 10px 0;
+                    page-break-inside: avoid;
+                }
+
+                .order-items-table {
+                    width: 100%;
+                    margin: 10px 0;
+                    border-collapse: collapse;
+                }
+
+                .order-items-table th,
+                .order-items-table td {
+                    padding: 5px;
+                    border: 1px solid #ddd;
+                    text-align: left;
+                }
+
+                /* Remove margins and padding from containers */
+                .report-container {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                }
+
+                /* Ensure proper spacing between sections */
+                tr, td {
+                    page-break-inside: avoid;
+                }
+
+                /* Charts section */
+                #chartsSection {
+                    display: block !important;
+                    margin-top: 20px !important;
+                    page-break-before: always;
+                }
+
+                .chart-container {
+                    page-break-inside: avoid;
+                    margin-bottom: 20px;
+                }
+
+                /* Fix spacing issues */
+                * {
+                    box-shadow: none !important;
+                }
+
+                /* Remove any floating elements */
+                .clearfix::after {
+                    content: "";
+                    clear: both;
+                    display: table;
+                }
+            }
+        }
+    </style>
+
+    {# Show the form only if orders are NOT present #}
+    <div class="no-print">
+    {% if not orders %}
+    <form method="post" style="margin-bottom: 30px; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
+        {% csrf_token %}
+        <div style="display: flex; flex-wrap: wrap; gap: 25px; align-items: flex-end;">
+            <div>
+                <label for="from_date" style="display: block; margin-bottom: 6px; font-weight: bold;">From Date:</label>
+                <input type="date" id="from_date" name="from_date" value="{{ from_date|default:'' }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="to_date" style="display: block; margin-bottom: 6px; font-weight: bold;">To Date:</label>
+                <input type="date" id="to_date" name="to_date" value="{{ to_date|default:'' }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div>
+                <label for="payment_method" style="display: block; margin-bottom: 6px; font-weight: bold;">Payment Method:</label>
+                <select id="payment_method" name="payment_method" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="">All</option>
+            {% for choice in payment_method_choices %}
+                <option value="{{ choice.0 }}" {% if payment_method == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+            </div>
+            <button type="submit" style="padding: 10px 20px; background-color: #417690; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">Generate Report</button>
+        </div>
+    </form>
+    {% endif %}
+    </div>
+
+    {# Show header and report only if orders are present #}
+    {% if orders %}
+    {# --- Sales Analytics Header (Mimicking Bill Header) --- #}
+    <div style="margin:0 auto 30px auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px;font-family:Arial, sans-serif;background-color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid #f0f0f0;">
+            <div style="text-align:left;">
+                {# Ensure you have a static file at 'images/qr.png' for the logo #}
+                <img src="{% static 'images/qr.png' %}" alt="Company Logo" style="max-height: 70px;">
+            </div>
+            <div style="text-align:right;">
+                <h2 style="margin:0;color:#555;font-size:1.5em;">Bhanjyang Village and Lodge</h2>
+                <p style="margin:5px 0 0 0;color:#777;font-size:1em;">Sarankot, Pokhara</p>
+                <p style="margin:2px 0 0 0;color:#777;font-size:1em;">Contact No: +977-9846852692</p>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:15px;">
+            <h3 style="margin:0;color:#555;font-size:1.3em;">Sales Report {% if from_date and to_date %}( {{ from_date }} to {{ to_date }} ){% endif %}</h3>
+            {% if payment_method %}
+                <p style="margin:5px 0 0 0;color:#777;font-size:1em;">Payment Method: {{ payment_method }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    
+
+    <div class="report-container" style="margin: 10px 0;">
+        <table id="sales-report-table" style="width: 100%; border-collapse: collapse; page-break-inside: auto; margin: 0;">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 35%">
+                <col style="width: 20%">
+            </colgroup>
+                    <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Room No.</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Customer Name</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                {% for order in orders %}
+                <tr> {# Style moved to CSS block #}
+                    <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.room_number }}</td>
+                    <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">{{ order.customer_name }}</td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">{{ order.check_in|date:"Y-m-d" }}</td>
+                            </tr>
+
+                <tr>
+                    <td colspan="3" style="padding: 0;">
+                        <div class="order-details" style="margin: 10px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #fff;">
+                            <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 1em; color: #555;">Ordered Items:</h4>
+                            <table class="order-items-table" style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                                <thead>
+                                    <tr style="background-color: #f9f9f9;">
+                                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; width: 40%;">Item</th>
+                                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 15%;">Qty</th>
+                                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; width: 20%;">Price</th>
+                                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; width: 25%;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee;">{{ item.food.name }}</td>
+                                        <td style="padding: 6px 8px; text-align: center; border-bottom: 1px solid #eee;">{{ item.quantity }}</td>
+                                        <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">Rs {{ item.price|floatformat:2 }}</td>
+                                        <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">Rs {{ item.get_total_price|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" style="padding: 6px 8px; text-align: center;">No items for this order.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                                <tr>
+                                    <td style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Order Total</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-weight: bold;">Rs {{ order.get_total_cost_of_orders|floatformat:2 }}</td>
+                                </tr>
+                            </table>
+                            <div style="margin-top: 15px;">
+                                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                                    <tr style="background-color: #f9f9f9;">
+                                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Description</th>
+                                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Amount</th>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Room Type</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ order.category.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Days Stayed</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ order.get_days_stayed }} days</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Room Charge</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">Rs {{ order.get_room_charge|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd;">Order Total</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">Rs {{ order.get_total_cost_of_orders|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Grand Total</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-weight: bold;">Rs {{ order.get_total_bill|floatformat:2 }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </td>
+                            </tr>
+
+                        {% empty %}
+                            <tr>
+                    <td colspan="3" style="padding: 15px; text-align: center;">No sales records found for the selected criteria.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+    </div>
+
+    {% if total_revenue is not None %}
+    <div style="margin-top: 25px; padding: 20px; text-align: right; font-size: 1.3em; font-weight: bold; border-top: 2px solid #417690;">
+        Total Revenue: Rs {{ total_revenue|floatformat:2 }}
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center;">
+        <a href="{% url 'admin:restaurant_generate_sales_report_pdf' %}?from_date={{ from_date|urlencode }}&to_date={{ to_date|urlencode }}&payment_method={{ payment_method|urlencode }}" class="btn-pdf" download>
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </a>
+        <button onclick="printReport()" class="btn-print">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+    </div>
+{% endif %}
+    {% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script>
+// Register the datalabels plugin globally
+Chart.register(ChartDataLabels);
+</script>
+
+<script>
+function printReport() {
+    // Charts are always visible now, so we don't need to handle their visibility
+    window.print();
+}
+
+function printCharts() {
+    // Show the charts if they're hidden
+    const chartsSection = document.getElementById('chartsSection');
+    const wasChartsHidden = chartsSection.style.display === 'none';
+    
+    if (wasChartsHidden) {
+        toggleCharts();
+        // Wait for the charts to render
+        setTimeout(printCharts, 100);
+        return;
+    }
+
+    // Create a hidden print container
+    let printContainer = document.getElementById('print-container');
+    if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'print-container';
+        printContainer.style.position = 'fixed';
+        printContainer.style.left = '-9999px';
+        printContainer.style.top = '0';
+        printContainer.style.backgroundColor = 'white';
+        printContainer.style.padding = '5mm';
+        printContainer.style.fontFamily = 'Arial, sans-serif';
+        printContainer.style.zIndex = '9999';
+        printContainer.style.width = '287mm'; // A4 width in landscape
+        printContainer.style.height = '200mm'; // A4 height in landscape
+        document.body.appendChild(printContainer);
+    } else {
+        printContainer.innerHTML = ''; // Clear previous content
+    }
+    
+    // Add header
+    const header = document.createElement('div');
+    header.style.textAlign = 'center';
+    header.style.marginBottom = '5mm';
+    header.style.paddingBottom = '3mm';
+    header.style.borderBottom = '2px solid #417690';
+    header.innerHTML = '<h2>Sales Analytics Report</h2>';
+    printContainer.appendChild(header);
+    
+    // Create a row for the first two charts
+    const chartRow = document.createElement('div');
+    chartRow.style.display = 'flex';
+    chartRow.style.marginBottom = '20px';
+    chartRow.style.gap = '20px';
+    
+    // Function to create a chart container
+    const createChartContainer = (title, id, icon) => {
+        const container = document.createElement('div');
+        container.style.flex = '1';
+        container.style.padding = '3mm';
+        container.style.border = '1px solid #e0e0e0';
+        container.style.background = 'white';
+        container.style.borderRadius = '4px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        
+        const titleEl = document.createElement('h3');
+        titleEl.style.margin = '0 0 3mm 0';
+        titleEl.style.textAlign = 'center';
+        titleEl.style.fontSize = '14px';
+        titleEl.innerHTML = `<i class="${icon}"></i> ${title}`;
+        
+        const img = document.createElement('img');
+        img.id = id;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        
+        container.appendChild(titleEl);
+        container.appendChild(img);
+        return container;
+    };
+    
+    // Set up the main container with fixed dimensions
+    const mainContainer = document.createElement('div');
+    mainContainer.style.display = 'flex';
+    mainContainer.style.flexDirection = 'column';
+    mainContainer.style.height = '100%';
+    mainContainer.style.gap = '5mm';
+    
+    // Add first two charts in a row
+    chartRow.style.flex = '1';
+    chartRow.style.minHeight = '80mm';
+    chartRow.style.maxHeight = '80mm';
+    chartRow.style.marginBottom = '5mm';
+    
+    const chart1 = createChartContainer('Room Occupancy', 'print-room-occupancy', 'fas fa-bed');
+    const chart2 = createChartContainer('Food Sales', 'print-food-sales', 'fas fa-utensils');
+    
+    chart1.style.height = '100%';
+    chart2.style.height = '100%';
+    
+    chartRow.appendChild(chart1);
+    chartRow.appendChild(chart2);
+    mainContainer.appendChild(chartRow);
+    
+    // Add monthly revenue chart below with margin
+    const monthlyChart = createChartContainer('Monthly Revenue', 'print-monthly-revenue', 'fas fa-chart-line');
+    monthlyChart.style.height = '80mm';
+    monthlyChart.style.marginTop = '5mm';
+    mainContainer.appendChild(monthlyChart);
+    
+    printContainer.appendChild(mainContainer);
+    
+    // Function to convert canvas to image and replace it
+    const replaceCanvasWithImage = (canvasId, imgId) => {
+        try {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error('Canvas not found:', canvasId);
+                return;
+            }
+            
+            const img = document.getElementById(imgId);
+            if (!img) {
+                console.error('Image element not found:', imgId);
+                return;
+            }
+            
+            // Create a temporary canvas with higher resolution for printing
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Set higher resolution for print quality
+            const scale = 2;
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            
+            // Apply white background
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the chart
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Convert to data URL and set as image source
+            const dataURL = tempCanvas.toDataURL('image/png', 1.0);
+            img.src = dataURL;
+            
+            // Set explicit dimensions
+            img.style.width = '100%';
+            img.style.height = 'auto';
+        } catch (error) {
+            console.error('Error converting canvas to image:', error);
+        }
+    };
+    
+    // Function to wait for charts to be ready
+    const waitForCharts = (callback) => {
+        const charts = [
+            { id: 'roomOccupancyChart', name: 'Room Occupancy' },
+            { id: 'foodSalesChart', name: 'Food Sales' },
+            { id: 'monthlyRevenueChart', name: 'Monthly Revenue' }
+        ];
+        
+        let readyCount = 0;
+        const maxAttempts = 10;
+        let attempts = 0;
+        
+        const checkCharts = () => {
+            attempts++;
+            readyCount = 0;
+            
+            charts.forEach(chart => {
+                const canvas = document.getElementById(chart.id);
+                if (canvas) {
+                    const chartInstance = Chart.getChart(canvas);
+                    if (chartInstance && chartInstance.options.animation && !chartInstance.animating) {
+                        readyCount++;
+                    } else if (chartInstance) {
+                        chartInstance.stop();
+                        readyCount++;
+                    }
+                }
+            });
+            
+            if (readyCount === charts.length || attempts >= maxAttempts) {
+                callback();
+            } else {
+                setTimeout(checkCharts, 100);
+            }
+        };
+        
+        setTimeout(checkCharts, 100);
+    };
+    
+    // Wait for charts to be ready, then capture them as images
+    waitForCharts(() => {
+        setTimeout(() => {
+            replaceCanvasWithImage('roomOccupancyChart', 'print-room-occupancy');
+            replaceCanvasWithImage('foodSalesChart', 'print-food-sales');
+            replaceCanvasWithImage('monthlyRevenueChart', 'print-monthly-revenue');
+            
+            const images = printContainer.getElementsByTagName('img');
+            let loadedImages = 0;
+            
+            const checkAllImagesLoaded = () => {
+                loadedImages++;
+                if (loadedImages >= images.length) {
+                    setTimeout(() => {
+                        printContainer.style.position = 'absolute';
+                        printContainer.style.width = '287mm';
+                        printContainer.style.height = '200mm';
+                        printContainer.style.left = '0';
+                        printContainer.style.top = '0';
+                        printContainer.style.margin = '0';
+                        printContainer.style.padding = '5mm';
+                        
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            @page { 
+                                size: A4 landscape;
+                                margin: 5mm;
+                            }
+                            @media print {
+                                body * {
+                                    visibility: hidden;
+                                }
+                                #print-container, #print-container * {
+                                    visibility: visible;
+                                }
+                                #print-container {
+                                    position: absolute;
+                                    left: 0;
+                                    top: 0;
+                                    width: 100%;
+                                    height: auto;
+                                }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                        
+                        window.onafterprint = function() {
+                            if (printContainer && printContainer.parentNode) {
+                                printContainer.parentNode.removeChild(printContainer);
+                            }
+                            if (style && style.parentNode) {
+                                style.parentNode.removeChild(style);
+                            }
+                            if (wasChartsHidden) {
+                                toggleCharts();
+                            }
+                            window.onafterprint = null;
+                        };
+                        
+                        window.print();
+                    }, 500);
+                }
+            };
+            
+            for (let i = 0; i < images.length; i++) {
+                if (images[i].complete) {
+                    checkAllImagesLoaded();
+                } else {
+                    images[i].onload = checkAllImagesLoaded;
+                    images[i].onerror = checkAllImagesLoaded;
+                }
+            }
+        }, 100);
+    });
+
+</script>
+
+    <!-- Charts Section -->
+    <div id="chartsSection" style="margin: 40px auto; max-width: 1200px; position: relative;">
+        <h1 style="border-bottom: 2px solidrgb(238, 7, 7);font-weight: bold; color:red; padding-bottom: 10px; margin-bottom: 20px; text-align:center;">Chart Analysis</h1>
+    
+    <!-- First Row of Charts -->
+    <div class="chart-row" style="display: flex; justify-content: center; gap: 30px; margin-bottom: 40px;">
+        <!-- Room Occupancy Chart -->
+        <div class="chart-container" style="flex: 1; max-width: 500px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h3 style="text-align: center; margin-bottom: 20px; color:rgb(25, 175, 52);"><i class="fas fa-bed"></i> Room Occupancy</h3>
+            <div style="height: 400px; position: relative;">
+                <canvas id="roomOccupancyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Food Sales Chart -->
+        <div class="chart-container" style="flex: 1; max-width: 500px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h3 style="text-align: center; margin-bottom: 20px; color:rgb(25, 175, 52);"><i class="fas fa-utensils"></i> Food Sales</h3>
+            <div style="height: 400px; position: relative;">
+                <canvas id="foodSalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Revenue Chart -->
+    <div class="chart-row" style="margin: 40px 0;">
+        <div class="chart-container" style="background-color: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 0 auto; max-width: 1200px;">
+            <h3 style="text-align: center; margin-bottom: 30px; color:rgb(25, 175, 52); font-size: 1.5em; font-weight: 600;">
+                <i class="fas fa-chart-line" style="margin-right: 10px;"></i>Monthly Revenue Breakdown
+            </h3>
+            <div style="height: 500px; position: relative; margin: 0 auto; width: 95%;">
+                <canvas id="monthlyRevenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function printReport() {
+    // Store current display state of charts
+    const chartsSection = document.getElementById('chartsSection');
+    const wasChartsVisible = chartsSection.style.display !== 'none';
+    
+    // Hide charts for report printing
+    if (wasChartsVisible) {
+        chartsSection.style.display = 'none';
+    }
+    
+    // Print the page
+    window.print();
+    
+    // Restore charts visibility if they were visible
+    if (wasChartsVisible) {
+        chartsSection.style.display = 'block';
+    }
+}
+
+function printCharts() {
+    // Show the charts if they're hidden
+    const chartsSection = document.getElementById('chartsSection');
+    const wasChartsHidden = chartsSection.style.display === 'none';
+    
+    if (wasChartsHidden) {
+        toggleCharts();
+        // Wait for the charts to render
+        setTimeout(printCharts, 100);
+        return;
+    }
+
+    // Create a hidden print container
+    let printContainer = document.getElementById('print-container');
+    if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'print-container';
+        printContainer.style.position = 'fixed';
+        printContainer.style.left = '-9999px';
+        printContainer.style.top = '0';
+        printContainer.style.backgroundColor = 'white';
+        printContainer.style.padding = '5mm';
+        printContainer.style.fontFamily = 'Arial, sans-serif';
+        printContainer.style.zIndex = '9999';
+        printContainer.style.width = '287mm'; // A4 width in landscape
+        printContainer.style.height = '200mm'; // A4 height in landscape
+        document.body.appendChild(printContainer);
+    } else {
+        printContainer.innerHTML = ''; // Clear previous content
+    }
+    
+    // Add header
+    const header = document.createElement('div');
+    header.style.textAlign = 'center';
+    header.style.marginBottom = '5mm';
+    header.style.paddingBottom = '3mm';
+    header.style.borderBottom = '2px solid #417690';
+    header.innerHTML = '<h2>Sales Analytics Report</h2>';
+    printContainer.appendChild(header);
+    
+    // Create a row for the first two charts
+    const chartRow = document.createElement('div');
+    chartRow.style.display = 'flex';
+    chartRow.style.marginBottom = '20px';
+    chartRow.style.gap = '20px';
+    
+    // Function to create a chart container
+    const createChartContainer = (title, id, icon) => {
+        const container = document.createElement('div');
+        container.style.flex = '1';
+        container.style.padding = '3mm';
+        container.style.border = '1px solid #e0e0e0';
+        container.style.background = 'white';
+        container.style.borderRadius = '4px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        
+        const titleEl = document.createElement('h3');
+        titleEl.style.margin = '0 0 3mm 0';
+        titleEl.style.textAlign = 'center';
+        titleEl.style.fontSize = '14px';
+        titleEl.innerHTML = `<i class="${icon}"></i> ${title}`;
+        
+        const img = document.createElement('img');
+        img.id = id;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        
+        container.appendChild(titleEl);
+        container.appendChild(img);
+        return container;
+    };
+    
+    // Set up the main container with fixed dimensions
+    const mainContainer = document.createElement('div');
+    mainContainer.style.display = 'flex';
+    mainContainer.style.flexDirection = 'column';
+    mainContainer.style.height = '100%';
+    mainContainer.style.gap = '5mm'; // Increased gap between rows
+    
+    // Add first two charts in a row
+    chartRow.style.flex = '1';
+    chartRow.style.height = '85mm';
+    chartRow.style.marginBottom = '10mm';
+    chartRow.style.display = 'flex';
+    chartRow.style.justifyContent = 'space-between';
+    
+    const chart1 = createChartContainer('Room Occupancy', 'print-room-occupancy', 'fas fa-bed');
+    const chart2 = createChartContainer('Food Sales', 'print-food-sales', 'fas fa-utensils');
+    
+    chart1.style.height = '100%';
+    chart2.style.height = '100%';
+    
+    chartRow.appendChild(chart1);
+    chartRow.appendChild(chart2);
+    mainContainer.appendChild(chartRow);
+    
+    // Add monthly revenue chart below with margin
+    const monthlyChart = createChartContainer('Monthly Revenue', 'print-monthly-revenue', 'fas fa-chart-line');
+    monthlyChart.style.height = '75mm';
+    monthlyChart.style.marginTop = '0';
+    mainContainer.appendChild(monthlyChart);
+    
+    printContainer.appendChild(mainContainer);
+    
+    // Function to convert canvas to image and replace it
+    const replaceCanvasWithImage = (canvasId, imgId) => {
+        try {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error('Canvas not found:', canvasId);
+                return;
+            }
+            
+            const img = document.getElementById(imgId);
+            if (!img) {
+                console.error('Image element not found:', imgId);
+                return;
+            }
+            
+            // Create a temporary canvas with higher resolution for printing
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Set higher resolution for print quality
+            const scale = 2; // Increase for higher quality
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            
+            // Apply white background
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the chart
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Convert to data URL and set as image source
+            const dataURL = tempCanvas.toDataURL('image/png', 1.0);
+            img.src = dataURL;
+            
+            // Set explicit dimensions
+            img.style.width = '100%';
+            img.style.height = 'auto';
+        } catch (error) {
+            console.error('Error converting canvas to image:', error);
+        }
+    };
+    
+    // Function to wait for charts to be ready
+    const waitForCharts = (callback) => {
+        const charts = [
+            { id: 'roomOccupancyChart', name: 'Room Occupancy' },
+            { id: 'foodSalesChart', name: 'Food Sales' },
+            { id: 'monthlyRevenueChart', name: 'Monthly Revenue' }
+        ];
+        
+        let readyCount = 0;
+        const maxAttempts = 10;
+        let attempts = 0;
+        
+        const checkCharts = () => {
+            attempts++;
+            readyCount = 0;
+            
+            charts.forEach(chart => {
+                const canvas = document.getElementById(chart.id);
+                if (canvas) {
+                    const chartInstance = Chart.getChart(canvas);
+                    if (chartInstance && chartInstance.options.animation && !chartInstance.animating) {
+                        readyCount++;
+                    } else if (chartInstance) {
+                        // Force stop any running animations
+                        chartInstance.stop();
+                        readyCount++;
+                    }
+                }
+            });
+            
+            if (readyCount === charts.length || attempts >= maxAttempts) {
+                // All charts are ready or max attempts reached
+                callback();
+            } else {
+                // Check again after a delay
+                setTimeout(checkCharts, 100);
+            }
+        };
+        
+        // Start checking
+        setTimeout(checkCharts, 100);
+    };
+    
+    // Wait for charts to be ready, then capture them as images
+    waitForCharts(() => {
+        // Small delay to ensure everything is rendered
+        setTimeout(() => {
+            // Replace all canvases with images
+            replaceCanvasWithImage('roomOccupancyChart', 'print-room-occupancy');
+            replaceCanvasWithImage('foodSalesChart', 'print-food-sales');
+            replaceCanvasWithImage('monthlyRevenueChart', 'print-monthly-revenue');
+            
+            // Wait for images to load
+            const images = printContainer.getElementsByTagName('img');
+            let loadedImages = 0;
+            
+            const checkAllImagesLoaded = () => {
+                loadedImages++;
+                if (loadedImages >= images.length) {
+                    // All images loaded, trigger print
+                    setTimeout(() => {
+                        // Show the print container and print
+                        printContainer.style.position = 'absolute';
+                        printContainer.style.width = '277mm';
+                        printContainer.style.height = '190mm';
+                        printContainer.style.left = '0';
+                        printContainer.style.top = '0';
+                        printContainer.style.margin = '0';
+                        printContainer.style.padding = '10mm';
+                        
+                        // Add print-specific styles
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            @page { 
+                                size: A4 landscape;
+                                margin: 5mm;
+                            }
+                            @media print {
+                                body * {
+                                    visibility: hidden;
+                                }
+                                #print-container, #print-container * {
+                                    visibility: visible;
+                                }
+                                #print-container {
+                                    position: absolute;
+                                    left: 0;
+                                    top: 0;
+                                    width: 100%;
+                                    height: auto;
+                                }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                        
+                        // Print and clean up
+                        window.onafterprint = function() {
+                            // Remove the print container
+                            if (printContainer && printContainer.parentNode) {
+                                printContainer.parentNode.removeChild(printContainer);
+                            }
+                            // Remove the print styles
+                            if (style && style.parentNode) {
+                                style.parentNode.removeChild(style);
+                            }
+                            // Toggle charts back if they were hidden
+                            if (wasChartsHidden) {
+                                toggleCharts();
+                            }
+                            window.onafterprint = null;
+                        };
+                        
+                        window.print();
+                    }, 500);
+                }
+            };
+            
+            // Set up image load handlers
+            for (let i = 0; i < images.length; i++) {
+                if (images[i].complete) {
+                    checkAllImagesLoaded();
+                } else {
+                    images[i].onload = checkAllImagesLoaded;
+                    images[i].onerror = checkAllImagesLoaded; // In case of error, still try to print
+                }
+            }
+    
+        }, 100); // End of setTimeout for chart rendering
+    }); // End of waitForCharts callback
+}
+
+function toggleCharts() {
+    const chartsSection = document.getElementById('chartsSection');
+    const toggleButton = document.getElementById('toggleChartsBtn');
+    
+    if (chartsSection.style.display === 'none' || !chartsSection.style.display) {
+        chartsSection.style.display = 'block';
+        if (toggleButton) {
+            toggleButton.innerHTML = '<i class="fas fa-chart-bar"></i> Hide Charts';
+        }
+    } else {
+        chartsSection.style.display = 'none';
+        if (toggleButton) {
+            toggleButton.innerHTML = '<i class="fas fa-chart-bar"></i> Show Charts';
+        }
+    }
+}
+</script>
+
+<script>
+    // Data passed from Django view (parsed from JSON strings)
+    const roomOccupancyLabels = JSON.parse('{{ room_occupancy_labels|escapejs }}');
+    const roomOccupancyCounts = JSON.parse('{{ room_occupancy_counts|escapejs }}');
+    const foodSalesLabels = JSON.parse('{{ food_sales_labels|escapejs }}');
+    const foodSalesQuantities = JSON.parse('{{ food_sales_quantities|escapejs }}');
+    const monthlyRevenueLabels = JSON.parse('{{ monthly_revenue_labels|escapejs }}');
+    const monthlyRevenueValues = JSON.parse('{{ monthly_revenue_values|escapejs }}');
+
+    // --- Room Occupancy Pie Chart ---
+    const roomOccupancyCtx = document.getElementById('roomOccupancyChart').getContext('2d');
+    const totalRoomOccupancy = roomOccupancyCounts.reduce((a, b) => a + b, 0);
+    
+    new Chart(roomOccupancyCtx, {
+        type: 'pie',
+        data: {
+            labels: roomOccupancyLabels,
+            datasets: [{
+                data: roomOccupancyCounts,
+                backgroundColor: [
+                    '#FF0000', '#008000', '#0000FF', '#FFD700', '#FF00FF',
+                    '#00FFFF', '#f2e3d5', '#d8b4a0', '#b99c8e', '#a77c6b'
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        font: { size: 11 },
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const percent = totalRoomOccupancy > 0 ? ((value / totalRoomOccupancy) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percent}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    formatter: (value, ctx) => {
+                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((value * 100) / total).toFixed(1) + '%' : '0%';
+                        return value > total * 0.05 ? percentage : ''; // Only show if segment is >5%
+                    },
+                    color: 'white',
+                    font: { weight: 'bold', size: 11 }
+                }
+            },
+            layout: {
+                padding: { top: 10, bottom: 20, left: 10, right: 10 }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+
+    // --- Food Sales by Category Pie Chart ---
+    const foodSalesCtx = document.getElementById('foodSalesChart').getContext('2d');
+    const totalFoodSales = foodSalesQuantities.reduce((a, b) => a + b, 0);
+    
+    new Chart(foodSalesCtx, {
+        type: 'pie',
+        data: {
+            labels: foodSalesLabels,
+            datasets: [{
+                data: foodSalesQuantities,
+                backgroundColor: [
+                    '#FF0000', '#008000', '#0000FF', '#FFD700', '#FF00FF',
+                    '#00FFFF', '#f2e3d5', '#d8b4a0', '#b99c8e', '#a77c6b'
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        font: { size: 11 },
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const percent = totalFoodSales > 0 ? ((value / totalFoodSales) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percent}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    formatter: (value, ctx) => {
+                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((value * 100) / total).toFixed(1) + '%' : '0%';
+                        return value > total * 0.05 ? percentage : ''; // Only show if segment is >5%
+                    },
+                    color: 'white',
+                    font: { weight: 'bold', size: 11 }
+                }
+            },
+            layout: {
+                padding: { top: 10, bottom: 20, left: 10, right: 10 }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+
+    // --- Monthly Sales Revenue Stacked Bar Chart ---
+    const monthlyRevenueCtx = document.getElementById('monthlyRevenueChart').getContext('2d');
+    
+    // Prepare data for stacked bars
+    const foodRevenueData = JSON.parse('{{ monthly_food_revenue|escapejs }}');
+    const roomRevenueData = JSON.parse('{{ monthly_room_revenue|escapejs }}');
+    
+    new Chart(monthlyRevenueCtx, {
+        type: 'bar',
+        data: {
+            labels: monthlyRevenueLabels,
+            datasets: [
+                {
+                    label: 'Food Revenue',
+                    data: foodRevenueData,
+                    backgroundColor: '#4CAF50',
+                    borderColor: '#388E3C',
+                    borderWidth: 1,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Room Revenue',
+                    data: roomRevenueData,
+                    backgroundColor: '#2196F3',
+                    borderColor: '#1976D2',
+                    borderWidth: 1,
+                    stack: 'Stack 0'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            barThickness: 40,  // Make bars thicker
+            maxBarThickness: 60,  // Maximum thickness
+            categoryPercentage: 0.8,  // Controls the ratio of the bar width to the available space
+            barPercentage: 0.9,  // Controls the ratio of the bar width to the category width
+            layout: {
+                padding: {
+                    top: 20,
+                    right: 30,
+                    bottom: 40,
+                    left: 40
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        boxWidth: 10
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Monthly Revenue Breakdown',
+                    padding: { bottom: 20 }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function(context) {
+                            const foodValue = foodRevenueData[context[0].dataIndex];
+                            const roomValue = roomRevenueData[context[0].dataIndex];
+                            const total = foodValue + roomValue;
+                            const foodPercent = total > 0 ? ((foodValue / total) * 100).toFixed(1) : 0;
+                            const roomPercent = total > 0 ? ((roomValue / total) * 100).toFixed(1) : 0;
+                            return [
+                                `Total: Rs ${total.toLocaleString()}`,
+                                `Food: ${foodPercent}% (Rs ${foodValue.toLocaleString()})`,
+                                `Room: ${roomPercent}% (Rs ${roomValue.toLocaleString()})`
+                            ];
+                        }
+                    }
+                },
+                datalabels: {
+                    display: function(context) {
+                        // Only show label if the value is greater than 5% of the total
+                        const total = foodRevenueData[context.dataIndex] + roomRevenueData[context.dataIndex];
+                        const percent = (context.dataset.data[context.dataIndex] / total) * 100;
+                        return percent > 5; // Only show if greater than 5%
+                    },
+                    color: 'white',
+                    anchor: 'center',
+                    align: 'center',
+                    formatter: function(value, context) {
+                        const total = foodRevenueData[context.dataIndex] + roomRevenueData[context.dataIndex];
+                        if (total === 0) return '';
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${percentage}%`;
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 10
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Month',
+                        padding: { top: 10 }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Revenue (Rs)',
+                        padding: { bottom: 10 }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rs ' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    right: 20,
+                    bottom: 10,
+                    left: 20
+                }
+            }
+        }
+    });
+
+</script>
+
+</div>
+    </div>
+</div>
+
+<script>
+    // Handle form submission
+    document.getElementById('dateFilterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fromDate = document.getElementById('from_date').value;
+        const toDate = document.getElementById('to_date').value;
+        
+        // Validate dates
+        if (new Date(fromDate) > new Date(toDate)) {
+            alert('From date cannot be after To date');
+            return;
+        }
+        
+        // Update URL with date parameters and reload page
+        window.location.href = `?from_date=${fromDate}&to_date=${toDate}`;
+    });
+
+    // Show content if dates are present in URL
+    window.addEventListener('load', function() {
+        const params = new URLSearchParams(window.location.search);
+        const fromDate = params.get('from_date');
+        const toDate = params.get('to_date');
+        
+        if (fromDate && toDate) {
+            document.getElementById('from_date').value = fromDate;
+            document.getElementById('to_date').value = toDate;
+            document.getElementById('reportContent').style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}
