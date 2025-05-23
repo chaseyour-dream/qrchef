@@ -665,9 +665,54 @@ def analytics_view(request):
             # --- Data for Charts ---
 
             # 1. Room Occupancy Pie Chart (based on filtered orders)
-            room_occupancy_data = orders.values('category__name').annotate(count=Count('id'))
-            room_occupancy_labels = [item['category__name'] for item in room_occupancy_data]
-            room_occupancy_counts = [item['count'] for item in room_occupancy_data]
+            # Track rooms and days stayed per category
+            room_occupancy_data = {}
+            for order in orders:
+                if not order.category or not order.room_number:
+                    continue
+                
+                cat_name = order.category.name
+                room_num = order.room_number.strip()
+                days = order.get_days_stayed() or 1
+                
+                if cat_name not in room_occupancy_data:
+                    room_occupancy_data[cat_name] = {
+                        'rooms': {},
+                        'total_days': 0
+                    }
+                
+                # Track days per room
+                if room_num not in room_occupancy_data[cat_name]['rooms']:
+                    room_occupancy_data[cat_name]['rooms'][room_num] = 0
+                room_occupancy_data[cat_name]['rooms'][room_num] += days
+                room_occupancy_data[cat_name]['total_days'] += days
+            
+            # Convert to list of dicts for template
+            room_occupancy_list = []
+            for cat, data in room_occupancy_data.items():
+                room_details = []
+                for room_num, days in data['rooms'].items():
+                    room_details.append(f"{room_num} - {days} day{'s' if days > 1 else ''}")
+                
+                room_occupancy_list.append({
+                    'category__name': cat,
+                    'room_count': len(data['rooms']),
+                    'rooms': ", ".join(room_details),
+                    'total_days': data['total_days']
+                })
+            
+            # Keep labels simple for the legend
+            room_occupancy_labels = [item['category__name'] for item in room_occupancy_list]
+            room_occupancy_counts = [item['room_count'] for item in room_occupancy_list]
+            
+            # Add room details to the context for tooltips
+            room_occupancy_details = {
+                item['category__name']: {
+                    'rooms': item['rooms'],
+                    'total_days': item['total_days']
+                }
+                for item in room_occupancy_list
+            }
 
             # 2. Food Sold by Category Pie Chart (based on items in filtered orders)
             # Get items from the filtered orders
@@ -754,9 +799,53 @@ def analytics_view(request):
          total_revenue = sum(order.get_total_bill() for order in orders)
 
          # Calculate data for all time for GET request initial load
-         room_occupancy_data = RoomOrder.objects.all().values('category__name').annotate(count=Count('id'))
-         room_occupancy_labels = [item['category__name'] for item in room_occupancy_data]
-         room_occupancy_counts = [item['count'] for item in room_occupancy_data]
+         room_occupancy_data = {}
+         for order in RoomOrder.objects.all():
+             if not order.category or not order.room_number:
+                 continue
+             
+             cat_name = order.category.name
+             room_num = order.room_number.strip()
+             days = order.get_days_stayed() or 1
+             
+             if cat_name not in room_occupancy_data:
+                 room_occupancy_data[cat_name] = {
+                     'rooms': {},
+                     'total_days': 0
+                 }
+             
+             # Track days per room
+             if room_num not in room_occupancy_data[cat_name]['rooms']:
+                 room_occupancy_data[cat_name]['rooms'][room_num] = 0
+             room_occupancy_data[cat_name]['rooms'][room_num] += days
+             room_occupancy_data[cat_name]['total_days'] += days
+         
+         # Convert to list of dicts for template
+         room_occupancy_list = []
+         for cat, data in room_occupancy_data.items():
+             room_details = []
+             for room_num, days in data['rooms'].items():
+                 room_details.append(f"{room_num} - {days} day{'s' if days > 1 else ''}")
+             
+             room_occupancy_list.append({
+                 'category__name': cat,
+                 'room_count': len(data['rooms']),
+                 'rooms': ", ".join(room_details),
+                 'total_days': data['total_days']
+             })
+         
+         # Keep labels simple for the legend
+         room_occupancy_labels = [item['category__name'] for item in room_occupancy_list]
+         room_occupancy_counts = [item['room_count'] for item in room_occupancy_list]
+         
+         # Add room details to the context for tooltips
+         room_occupancy_details = {
+             item['category__name']: {
+                 'rooms': item['rooms'],
+                 'total_days': item['total_days']
+             }
+             for item in room_occupancy_list
+         }
 
          food_sales_data = RoomOrderItem.objects.all().values('food__category__name').annotate(total_quantity=Sum('quantity'))
          food_sales_labels = [item['food__category__name'] or 'Uncategorized' for item in food_sales_data]
@@ -777,6 +866,7 @@ def analytics_view(request):
         'total_revenue': total_revenue,
         'room_occupancy_labels': json.dumps(room_occupancy_labels) if room_occupancy_data else '[]',
         'room_occupancy_counts': json.dumps(room_occupancy_counts) if room_occupancy_data else '[]',
+        'room_occupancy_details': json.dumps(room_occupancy_details) if room_occupancy_data else '{}',
         'food_sales_labels': json.dumps(food_sales_labels) if food_sales_data else '[]',
         'food_sales_quantities': json.dumps(food_sales_quantities) if food_sales_data else '[]',
         'monthly_revenue_labels': json.dumps(monthly_revenue_labels) if 'monthly_revenue_labels' in locals() else '[]',

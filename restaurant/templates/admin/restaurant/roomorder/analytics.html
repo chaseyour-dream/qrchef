@@ -1166,6 +1166,7 @@ function toggleCharts() {
     // Data passed from Django view (parsed from JSON strings)
     const roomOccupancyLabels = JSON.parse('{{ room_occupancy_labels|escapejs }}');
     const roomOccupancyCounts = JSON.parse('{{ room_occupancy_counts|escapejs }}');
+    const roomOccupancyDetails = JSON.parse('{{ room_occupancy_details|escapejs }}');
     const foodSalesLabels = JSON.parse('{{ food_sales_labels|escapejs }}');
     const foodSalesQuantities = JSON.parse('{{ food_sales_quantities|escapejs }}');
     const monthlyRevenueLabels = JSON.parse('{{ monthly_revenue_labels|escapejs }}');
@@ -1207,7 +1208,11 @@ function toggleCharts() {
                             const label = context.label || '';
                             const value = context.raw || 0;
                             const percent = totalRoomOccupancy > 0 ? ((value / totalRoomOccupancy) * 100).toFixed(1) : 0;
-                            return `${label}: ${value} (${percent}%)`;
+                            const details = roomOccupancyDetails[label] || {};
+                            return [
+                                `${label}: ${value} booking${value !== 1 ? 's' : ''} (${percent}%)`,
+                                `Total days stayed: ${details.total_days || 0} day${details.total_days !== 1 ? 's' : ''}`
+                            ];
                         }
                     }
                 },
