@@ -235,6 +235,32 @@
         color: #444;
         margin-bottom: 0.7rem;
       }
+      
+      .services-feature {
+        word-wrap: break-word;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        display: block;
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+      
+      .feature {
+        margin-bottom: 8px;
+        display: flex;
+        align-items: flex-start;
+      }
+      
+      .feature-icon {
+        margin-right: 8px;
+        flex-shrink: 0;
+      }
+      
+      .feature-label {
+        margin-right: 5px;
+        font-weight: 600;
+      }
       @media (max-width: 900px) {
         .room-list {
           flex-direction: row;
@@ -361,7 +387,13 @@
           <div class="feature"><span class="feature-icon">📏</span><span class="feature-label">Size:</span> {{ room.size }}</div>
           <div class="feature"><span class="feature-icon">👥</span><span class="feature-label">Capacity:</span> {{ room.capacity }}</div>
           <div class="feature"><span class="feature-icon">🛏️</span><span class="feature-label">Bed:</span> {{ room.bed }}</div>
-          <div class="feature services-feature"><span class="feature-icon">🛎️</span><span class="feature-label">Services:</span> {{ room.services }}</div>
+          <div class="feature services-feature">
+            <span class="feature-icon">🛎️</span>
+            <div>
+              <span class="feature-label">Services:</span>
+              <span class="services-text">{{ room.services }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
